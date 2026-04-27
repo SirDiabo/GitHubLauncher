@@ -43,4 +43,8 @@
 		<AvaloniaResource Include="Assets/**" />
 		<AvaloniaResource Include="Assets/Icons/**" />
 	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\GitHubLauncher.Core\GitHubLauncher.Core.csproj" />
+	</ItemGroup>
 </Project>

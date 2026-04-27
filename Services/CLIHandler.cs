@@ -1,3 +1,4 @@
+using GitHubLauncher.Core.Models;
 using GitHubLauncher.Models;
 using GitHubLauncher.Services;
 using System;

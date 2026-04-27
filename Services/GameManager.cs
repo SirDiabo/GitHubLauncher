@@ -1,4 +1,6 @@
+using GitHubLauncher.Core.Models;
 using GitHubLauncher.Models;
+using GitHubLauncher.Core.Services;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
@@ -16,6 +18,7 @@ namespace GitHubLauncher.Services
         private readonly string _cacheFolder;
         private readonly string _gamesConfigPath;
 
+        protected LauncherProfile Profile { get; }
         public ObservableCollection<GameInfo> Games { get; set; } = [];
         public HttpClient HttpClient => _httpClient;
         public string GamesFolder => _gamesFolder;
@@ -70,10 +73,11 @@ namespace GitHubLauncher.Services
             }
         }
 
-        public GameManager()
+        public GameManager(LauncherProfile? profile = null)
         {
+            Profile = profile ?? LauncherProfile.Default;
             _httpClient = new HttpClient();
-            _httpClient.DefaultRequestHeaders.Add("User-Agent", "GitHubLauncher/1.0");
+            _httpClient.DefaultRequestHeaders.Add("User-Agent", Profile.UserAgent);
             _httpClient.Timeout = TimeSpan.FromMinutes(30);
 
             try
@@ -92,7 +96,7 @@ namespace GitHubLauncher.Services
             }
             else
             {
-                _gamesFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Games");
+                _gamesFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, Profile.DefaultInstallFolderName);
             }
 
             _cacheFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Cache");
@@ -630,9 +634,9 @@ namespace GitHubLauncher.Services
             return dict;
         }
 
-        private (List<object> standard, List<object> experimental, List<object> custom) GetDefaultGamesData()
+        protected virtual (List<object> standard, List<object> experimental, List<object> custom) GetDefaultGamesData()
         {
-            return (new List<object>(), new List<object>(), new List<object>());
+            return Profile.GetDefaultGamesData();
         }
 
         private string BuildDefaultGamesJson()
@@ -860,7 +864,7 @@ namespace GitHubLauncher.Services
                 }
                 else
                 {
-                    targetPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Games");
+                    targetPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, Profile.DefaultInstallFolderName);
                     Directory.CreateDirectory(targetPath);
                 }
 
@@ -879,7 +883,7 @@ namespace GitHubLauncher.Services
                 System.Diagnostics.Debug.WriteLine($"Error updating games folder: {ex.Message}");
 
                 // Fallback to default path on error
-                _gamesFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Games");
+                _gamesFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, Profile.DefaultInstallFolderName);
                 Directory.CreateDirectory(_gamesFolder);
 
                 throw;

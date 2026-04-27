@@ -9,6 +9,7 @@ using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using GitHubLauncher.Core.Models;
 using GitHubLauncher.Models;
 using GitHubLauncher.Services;
 using System.Collections.ObjectModel;
