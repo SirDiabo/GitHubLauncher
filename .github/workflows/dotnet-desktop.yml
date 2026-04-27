@@ -30,7 +30,7 @@ jobs:
       run: dotnet restore ${{ env.Solution_Name }}
 
     - name: Publish Windows x64
-      run: dotnet publish ${{ env.Solution_Name }} -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=false -o publish/win-x64
+      run: dotnet publish GitHubLauncher.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=false -o publish/win-x64
 
     - name: Upload Windows x64
       uses: actions/upload-artifact@v4
@@ -50,6 +50,7 @@ jobs:
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
+        submodules: recursive
 
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
@@ -60,10 +61,10 @@ jobs:
       run: dotnet restore ${{ env.Solution_Name }}
 
     - name: Publish Linux x64
-      run: dotnet publish ${{ env.Solution_Name }} -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=false -o publish/linux-x64
+      run: dotnet publish GitHubLauncher.csproj -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=false -o publish/linux-x64
 
     - name: Publish Linux ARM64
-      run: dotnet publish ${{ env.Solution_Name }} -c Release -r linux-arm64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=false -o publish/linux-arm64
+      run: dotnet publish GitHubLauncher.csproj -c Release -r linux-arm64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=false -o publish/linux-arm64
 
     - name: Upload Linux x64
       uses: actions/upload-artifact@v4
@@ -91,6 +92,7 @@ jobs:
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
+        submodules: recursive
 
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
@@ -101,7 +103,7 @@ jobs:
       run: dotnet restore ${{ env.Solution_Name }}
 
     - name: Publish macOS x64
-      run: dotnet publish ${{ env.Solution_Name }} -c Release -r osx-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=false -o publish/osx-x64
+      run: dotnet publish GitHubLauncher.csproj -c Release -r osx-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=false -o publish/osx-x64
 
     - name: Create macOS .app bundle
       run: |
