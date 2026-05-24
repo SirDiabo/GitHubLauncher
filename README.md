@@ -4,13 +4,13 @@
 [![License](https://img.shields.io/github/license/SirDiabo/GithubLauncher)](https://github.com/SirDiabo/GithubLauncher/blob/main/LICENSE)
 
 ![Github Launcher Screenshot](Assets/LauncherScreenshot.png)
-A modern, user-friendly launcher application for managing and running GitHub-hosted games. This tool streamlines the process of downloading, installing, and launching your favorite titles.
+A modern, user-friendly launcher application for managing and running GitHub-hosted apps. This tool streamlines the process of downloading, installing, and launching your favorite projects.
 
 ## Features
 
 - **Automated Updates**: Seamlessly download and install the latest releases from GitHub
 - **Version Management**: Stay up-to-date with automatic version checking and updates
-- **Game Management**: Easy-to-use interface for launching your N64 games
+- **App Management**: Easy-to-use interface for launching GitHub-hosted apps
 - **Smart Integration**: Direct integration with GitHub releases for smooth updates
 
 ## Getting Started
@@ -30,8 +30,8 @@ A modern, user-friendly launcher application for managing and running GitHub-hos
 
 1. Launch the application
 2. The launcher will automatically check for updates on startup
-3. Browse your game library through the intuitive interface
-4. Select a game and click "Download/Launch" to play
+3. Browse your app library through the interface
+4. Select an app and click "Download/Launch" to use it
 
 ## Configuration
 
@@ -41,46 +41,37 @@ Create a token with no special permissions needed and set it in the launcher set
 You can create a token at ```GitHub Settings -> Developer settings > Personal access tokens > Tokens (classic) > Generate new token```
 You don't need to give it any special permissions. Then paste that Token into your Settings field. Do not share your Token!
 
-### games.json Structure
+### apps.json Structure
 
-The launcher uses a `games.json` file to manage the available games. You can customize this file to add your own games or modify existing entries. The file is organized into three categories: `standard`, `experimental`, and `custom`.
+The launcher uses an `apps.json` file to manage the available apps. Every entry is user-managed and editable; there are no built-in stable, experimental, or custom categories.
 
-#### Game Entry Properties
+#### App Entry Properties
 
-Each game entry requires the following properties:
+Each app entry requires the following properties:
 
-- **`name`** - The display name of the game as it appears in the launcher
+- **`name`** - The display name of the app as it appears in the launcher
 - **`repository`** - The GitHub repository in the format `username/repository`
-- **`folderName`** - The folder name where the game will be downloaded and installed
-- **`gameIconUrl`** URL of the game's icon image. If null, a default icon will be used.
+- **`folderName`** - The folder name where the app will be downloaded and installed
+- **`appIconUrl`** - URL of the app's icon image. If null, a default icon will be used.
 
 #### Example Configuration
 
 ```json
 {
-    "standard": [
+    "apps": [
         {
-            "name": "Example Game",
-            "repository": "username/example-game-repo",
-            "folderName": "ExampleGame",
-            "gameIconUrl": null
+            "name": "Example App",
+            "repository": "username/example-app-repo",
+            "folderName": "ExampleApp",
+            "appIconUrl": null
         },
         {
-            "name": "Another Game",
-            "repository": "anotheruser/another-game-repo",
-            "folderName": "AnotherGame",
-            "gameIconUrl": "link/to/an/image.png"
+            "name": "Another App",
+            "repository": "anotheruser/another-app-repo",
+            "folderName": "AnotherApp",
+            "appIconUrl": "link/to/an/image.png"
         }
-    ],
-    "experimental": [
-        {
-            "name": "Experimental Game",
-            "repository": "expuser/experimental-game-repo",
-            "folderName": "ExperimentalGame",
-            "gameIconUrl": "link/to/a/different/image.jpg"
-        }
-    ],
-    "custom": []
+    ]
 }
 ```
 

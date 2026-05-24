@@ -169,32 +169,6 @@ namespace GithubLauncher
             get => _settings.ShowOSTopBar ? ExtendClientAreaChromeHints.PreferSystemChrome : ExtendClientAreaChromeHints.NoChrome;
         }
         private string _currentSortBy = "Name";
-        private bool _showExperimentalGames;
-        public bool ShowExperimentalGames
-        {
-            get => _showExperimentalGames;
-            set
-            {
-                if (_showExperimentalGames != value)
-                {
-                    _showExperimentalGames = value;
-                    OnPropertyChanged(nameof(ShowExperimentalGames));
-                }
-            }
-        }
-        private bool _showCustomGames;
-        public bool ShowCustomGames
-        {
-            get => _showCustomGames;
-            set
-            {
-                if (_showCustomGames != value)
-                {
-                    _showCustomGames = value;
-                    OnPropertyChanged(nameof(ShowCustomGames));
-                }
-            }
-        }
         private string _currentVersionString = string.Empty;
         public string currentVersionString
         {
@@ -1011,7 +985,7 @@ namespace GithubLauncher
             catch (Exception ex)
             {
                 await Dispatcher.UIThread.InvokeAsync(() =>
-                    _ = ShowMessageBoxAsync($"Failed to load games: {ex.Message}", "Load Error"));
+                    _ = ShowMessageBoxAsync($"Failed to load apps: {ex.Message}", "Load Error"));
             }
         }
 
@@ -1762,7 +1736,7 @@ namespace GithubLauncher
 
             if (game == null)
             {
-                _ = ShowMessageBoxAsync("Unable to identify the selected game.", "Error");
+                _ = ShowMessageBoxAsync("Unable to identify the selected app.", "Error");
                 return;
             }
 
@@ -1846,7 +1820,7 @@ namespace GithubLauncher
             }
             else
             {
-                await ShowMessageBoxAsync("No installed games found to continue.", "No Game Found");
+                await ShowMessageBoxAsync("No installed apps found to continue.", "No App Found");
             }
         }
 
@@ -1895,9 +1869,6 @@ namespace GithubLauncher
                 if (UseGridViewCheckBox != null)
                     UseGridViewCheckBox.IsChecked = _settings.UseGridView;
 
-                if (ShowExperimentalCheckBox != null)
-                    ShowExperimentalCheckBox.IsChecked = _settings.ShowExperimentalGames;
-
                 if (BackgroundOpacitySlider != null)
                     BackgroundOpacitySlider.Value = _settings.BackgroundOpacity;
 
@@ -1919,14 +1890,11 @@ namespace GithubLauncher
                     }
                 }
 
-                if (ShowCustomGamesCheckBox != null)
-                    ShowCustomGamesCheckBox.IsChecked = _settings.ShowCustomGames;
-
                 if (GitHubTokenTextBox != null)
                     GitHubTokenTextBox.Text = _settings.GitHubApiToken;
 
                 if (GamePathTextBox != null)
-                    GamePathTextBox.Text = _settings.GamesPath;
+                    GamePathTextBox.Text = _settings.AppsPath;
 
                 if (LinuxWindowsLaunchCommandTextBox != null)
                     LinuxWindowsLaunchCommandTextBox.Text = _settings.LinuxWindowsLaunchCommand;
@@ -2373,7 +2341,7 @@ namespace GithubLauncher
 
             if (game == null)
             {
-                await ShowMessageBoxAsync("Unable to identify the selected game.", "Error");
+                await ShowMessageBoxAsync("Unable to identify the selected app.", "Error");
                 return;
             }
 
@@ -2409,7 +2377,7 @@ namespace GithubLauncher
 
             if (game == null)
             {
-                await ShowMessageBoxAsync("Unable to identify the selected game.", "Error");
+                await ShowMessageBoxAsync("Unable to identify the selected app.", "Error");
                 return;
             }
 
@@ -2427,7 +2395,7 @@ namespace GithubLauncher
         {
             if (sender is not MenuItem menuItem || menuItem.CommandParameter is not GameInfo game)
             {
-                await ShowMessageBoxAsync("Unable to identify the selected game.", "Error");
+                await ShowMessageBoxAsync("Unable to identify the selected app.", "Error");
                 return;
             }
 
@@ -2468,7 +2436,7 @@ namespace GithubLauncher
         {
             if (sender is not MenuItem menuItem || menuItem.CommandParameter is not GameInfo game)
             {
-                await ShowMessageBoxAsync("Unable to identify the selected game.", "Error");
+                await ShowMessageBoxAsync("Unable to identify the selected app.", "Error");
                 return;
             }
 
@@ -2486,7 +2454,7 @@ namespace GithubLauncher
         {
             if (sender is not MenuItem menuItem || menuItem.CommandParameter is not GameInfo game)
             {
-                await ShowMessageBoxAsync("Unable to identify the selected game.", "Error");
+                await ShowMessageBoxAsync("Unable to identify the selected app.", "Error");
                 return;
             }
 
@@ -2497,7 +2465,7 @@ namespace GithubLauncher
         {
             if (sender is not MenuItem menuItem || menuItem.CommandParameter is not GameInfo game)
             {
-                await ShowMessageBoxAsync("Unable to identify the selected game.", "Error");
+                await ShowMessageBoxAsync("Unable to identify the selected app.", "Error");
                 return;
             }
 
@@ -2537,7 +2505,7 @@ namespace GithubLauncher
             var selectedGame = menuItem?.CommandParameter as GameInfo;
             if (selectedGame == null)
             {
-                _ = ShowMessageBoxAsync("Unable to identify the selected game.", "Error");
+                _ = ShowMessageBoxAsync("Unable to identify the selected app.", "Error");
                 return;
             }
 
@@ -2595,7 +2563,7 @@ namespace GithubLauncher
             var selectedGame = menuItem?.CommandParameter as GameInfo;
             if (selectedGame == null)
             {
-                _ = ShowMessageBoxAsync("Unable to identify the selected game.", "Error");
+                _ = ShowMessageBoxAsync("Unable to identify the selected app.", "Error");
                 return;
             }
 
@@ -2769,9 +2737,9 @@ namespace GithubLauncher
                             ? $"repo:{game.Repository}"
                             : $"name:{game.Name ?? string.Empty}";
 
-                    settings.ManuallyHiddenGames.Remove(key);
+                    settings.ManuallyHiddenApps.Remove(key);
                     if (!string.IsNullOrWhiteSpace(game.Name))
-                        settings.ManuallyHiddenGames.Remove(game.Name);
+                        settings.ManuallyHiddenApps.Remove(game.Name);
                 }
 
                 AppSettings.Save(settings);
@@ -2794,49 +2762,9 @@ namespace GithubLauncher
             }
             catch (Exception ex)
             {
-                _ = ShowMessageBoxAsync($"Failed to hide non-installed games: {ex.Message}", "Error");
+                _ = ShowMessageBoxAsync($"Failed to hide non-installed apps: {ex.Message}", "Error");
             }
         }
-
-        private async void HideNonStableButton_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                await _gameManager.HideAllNonStableGames();
-                ApplySorting();
-            }
-            catch (Exception ex)
-            {
-                _ = ShowMessageBoxAsync($"Failed to hide non-stable games: {ex.Message}", "Error");
-            }
-        }
-
-        private async void OnlyExperimentalGamesButton_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                await _gameManager.OnlyShowExperimentalGames();
-                ApplySorting();
-            }
-            catch (Exception ex)
-            {
-                _ = ShowMessageBoxAsync($"Failed to hide stable games: {ex.Message}", "Error");
-            }
-        }
-
-        private async void OnlyCustomGamesButton_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                await _gameManager.OnlyShowCustomGames();
-                ApplySorting();
-            }
-            catch (Exception ex)
-            {
-                _ = ShowMessageBoxAsync($"Failed to hide non-custom games: {ex.Message}", "Error");
-            }
-        }
-
         private void SortByComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (e.AddedItems.Count == 0) return;
@@ -2854,11 +2782,11 @@ namespace GithubLauncher
         {
             if (_gameManager?.Games == null || _gameManager.Games.Count == 0)
             {
-                Debug.WriteLine("ApplySorting: No games to sort");
+                Debug.WriteLine("ApplySorting: No apps to sort");
                 return;
             }
 
-            Debug.WriteLine($"ApplySorting: Sorting {_gameManager.Games.Count} games by {_currentSortBy}");
+            Debug.WriteLine($"ApplySorting: Sorting {_gameManager.Games.Count} apps by {_currentSortBy}");
 
             List<GameInfo> sortedGames;
 
@@ -2889,20 +2817,6 @@ namespace GithubLauncher
                 case "LastPlayed":
                     sortedGames = _gameManager.Games
                         .OrderByDescending(g => GetLastPlayedTime(g))
-                        .ThenBy(g => g.Name ?? string.Empty)
-                        .ToList();
-                    break;
-
-                case "Experimental":
-                    sortedGames = _gameManager.Games
-                        .OrderByDescending(g => g.IsExperimental)
-                        .ThenBy(g => g.Name ?? string.Empty)
-                        .ToList();
-                    break;
-
-                case "Custom":
-                    sortedGames = _gameManager.Games
-                        .OrderByDescending(g => g.IsCustom)
                         .ThenBy(g => g.Name ?? string.Empty)
                         .ToList();
                     break;
@@ -2956,7 +2870,7 @@ namespace GithubLauncher
 
             if (game == null)
             {
-                _ = ShowMessageBoxAsync("Unable to identify the selected game.", "Error");
+                _ = ShowMessageBoxAsync("Unable to identify the selected app.", "Error");
                 return;
             }
 
@@ -2968,7 +2882,7 @@ namespace GithubLauncher
             }
             catch (Exception ex)
             {
-                _ = ShowMessageBoxAsync($"Failed to hide game: {ex.Message}", "Error");
+                _ = ShowMessageBoxAsync($"Failed to hide app: {ex.Message}", "Error");
             }
         }
 
@@ -3049,55 +2963,6 @@ namespace GithubLauncher
                 return false;
             });
         }
-
-        private async void ShowExperimentalCheckBox_Checked(object sender, RoutedEventArgs e)
-        {
-            if (_settings != null)
-            {
-                ShowExperimentalGames = true;
-                _settings.ShowExperimentalGames = true;
-                OnSettingChanged();
-                await _gameManager.LoadGamesAsync();
-                ApplySorting();
-            }
-        }
-
-        private async void ShowExperimentalCheckBox_Unchecked(object sender, RoutedEventArgs e)
-        {
-            if (_settings != null)
-            {
-                ShowExperimentalGames = false;
-                _settings.ShowExperimentalGames = false;
-                OnSettingChanged();
-                await _gameManager.LoadGamesAsync();
-                ApplySorting();
-            }
-        }
-
-        private async void ShowCustomGamesCheckBox_Checked(object sender, RoutedEventArgs e)
-        {
-            if (_settings != null)
-            {
-                ShowCustomGames = true;
-                _settings.ShowCustomGames = true;
-                OnSettingChanged();
-                await _gameManager.LoadGamesAsync();
-                ApplySorting();
-            }
-        }
-
-        private async void ShowCustomGamesCheckBox_Unchecked(object sender, RoutedEventArgs e)
-        {
-            if (_settings != null)
-            {
-                ShowCustomGames = false;
-                _settings.ShowCustomGames = false;
-                OnSettingChanged();
-                await _gameManager.LoadGamesAsync();
-                ApplySorting();
-            }
-        }
-
         private void EnableGamepadCheckBox_Checked(object sender, RoutedEventArgs e)
         {
             if (_settings != null)
@@ -3200,10 +3065,10 @@ namespace GithubLauncher
 
         private async Task UpdateGamePath(string newPath, TextBox textBox)
         {
-            if (_settings.GamesPath == newPath)
+            if (_settings.AppsPath == newPath)
                 return;
 
-            _settings.GamesPath = newPath;
+            _settings.AppsPath = newPath;
             OnSettingChanged();
 
             if (_gameManager == null)
@@ -3218,21 +3083,21 @@ namespace GithubLauncher
 
                 if (!result)
                 {
-                    textBox.Text = _settings.GamesPath;
+                    textBox.Text = _settings.AppsPath;
                     return;
                 }
             }
 
             try
             {
-                await _gameManager.UpdateGamesFolderAsync(_settings.GamesPath);
+                await _gameManager.UpdateGamesFolderAsync(_settings.AppsPath);
                 await _gameManager.LoadGamesAsync();
                 ApplySorting();
             }
             catch (Exception ex)
             {
-                await ShowMessageBoxAsync($"Failed to update games path: {ex.Message}", "Error");
-                textBox.Text = _settings.GamesPath;
+                await ShowMessageBoxAsync($"Failed to update apps path: {ex.Message}", "Error");
+                textBox.Text = _settings.AppsPath;
             }
         }
 
@@ -3267,7 +3132,7 @@ namespace GithubLauncher
 
             try
             {
-                _settings.GamesPath = string.Empty;
+                _settings.AppsPath = string.Empty;
                 if (GamePathTextBox != null)
                     GamePathTextBox.Text = string.Empty;
                 OnSettingChanged();
@@ -3291,7 +3156,7 @@ namespace GithubLauncher
             {
                 var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
                 {
-                    Title = "Select Games Folder",
+                    Title = "Select Apps Folder",
                     AllowMultiple = false
                 });
 
@@ -3307,7 +3172,7 @@ namespace GithubLauncher
 
                     if (_settings != null)
                     {
-                        _settings.GamesPath = selectedPath;
+                        _settings.AppsPath = selectedPath;
 
                         if (GamePathTextBox != null)
                             GamePathTextBox.Text = selectedPath;
@@ -3419,7 +3284,7 @@ namespace GithubLauncher
             AppSettings.Save(_settings);
         }
 
-        // Games Manager Tab Properties
+        // Apps Manager Tab Properties
         public ObservableCollection<GameInfo> ManagerGames { get; set; } = [];
         private GameInfo? _selectedGame;
         public GameInfo? SelectedGame
@@ -3462,9 +3327,9 @@ namespace GithubLauncher
         public bool CanUpdateGame => SelectedGame != null && !string.IsNullOrEmpty(_selectedGame?.Name) &&
             !string.IsNullOrEmpty(_selectedGame?.Repository) && !string.IsNullOrEmpty(_selectedGame?.FolderName);
         
-        // Edit restrictions for different game types
-        public bool IsEditingCustomGame => SelectedGame?.IsCustom == true;
-        public bool CanEditAllFields => IsEditingCustomGame;
+        // App editing state
+        public bool IsEditingCustomGame => SelectedGame != null;
+        public bool CanEditAllFields => SelectedGame != null;
 
         // Method to update form field enabled state
         private void UpdateFormFieldsEnabled()
@@ -3477,21 +3342,17 @@ namespace GithubLauncher
             var iconBox = this.FindControl<TextBox>("NewGameIconTextBox");
             var isCustomBox = this.FindControl<CheckBox>("IsCustomCheckBox");
             var isExperimentalBox = this.FindControl<CheckBox>("IsExperimentalCheckBox");
-
-            // For non-custom games, disable repository and folder name editing
-            bool canEditAll = SelectedGame.IsCustom;
-
-            if (repoBox != null) repoBox.IsEnabled = canEditAll;
-            if (folderBox != null) folderBox.IsEnabled = canEditAll;
-            if (isCustomBox != null) isCustomBox.IsEnabled = canEditAll;
-            if (isExperimentalBox != null) isExperimentalBox.IsEnabled = canEditAll;
+            if (repoBox != null) repoBox.IsEnabled = true;
+            if (folderBox != null) folderBox.IsEnabled = true;
+            if (isCustomBox != null) isCustomBox.IsEnabled = false;
+            if (isExperimentalBox != null) isExperimentalBox.IsEnabled = false;
 
             // Name and icon URL can always be edited
             if (nameBox != null) nameBox.IsEnabled = true;
             if (iconBox != null) iconBox.IsEnabled = true;
         }
 
-        // Games Manager Event Handlers
+        // Apps Manager Event Handlers
         private async void AddGame_Click(object sender, RoutedEventArgs e)
         {
             if (SelectedGame == null || string.IsNullOrEmpty(SelectedGame.Name) ||
@@ -3504,11 +3365,11 @@ namespace GithubLauncher
             try
             {
                 var gamesData = await LoadGamesFromJsonAsync();
-                var customGames = gamesData.Where(g => g.IsCustom).ToList();
+                var apps = gamesData.ToList();
 
-                if (customGames.Any(g => g.Name == SelectedGame.Name || g.Repository == SelectedGame.Repository))
+                if (apps.Any(g => g.Name == SelectedGame.Name || g.Repository == SelectedGame.Repository))
                 {
-                    await ShowMessageBoxAsync("A game with this name or repository already exists.", "Duplicate Game");
+                    await ShowMessageBoxAsync("An app with this name or repository already exists.", "Duplicate App");
                     return;
                 }
 
@@ -3524,15 +3385,15 @@ namespace GithubLauncher
                     GameManager = _gameManager
                 };
 
-                customGames.Add(newGame);
-                await SaveGamesToJsonAsync(customGames);
+                apps.Add(newGame);
+                await SaveGamesToJsonAsync(apps);
                 await LoadGamesManagerAsync();
                 ClearGameForm_Click(sender, e);
-                await ShowMessageBoxAsync($"Game '{newGame.Name}' added successfully.", "Game Added");
+                await ShowMessageBoxAsync($"App '{newGame.Name}' added successfully.", "App Added");
             }
             catch (Exception ex)
             {
-                await ShowMessageBoxAsync($"Failed to add game: {ex.Message}", "Error");
+                await ShowMessageBoxAsync($"Failed to add app: {ex.Message}", "Error");
             }
         }
 
@@ -3548,55 +3409,38 @@ namespace GithubLauncher
             try
             {
                 var gamesData = await LoadGamesFromJsonAsync();
-                
-                // Get the default games from GameManager to identify truly custom games
-                var defaultGames = _gameManager.GetDefaultGames();
-                
-                // Filter to only truly custom games (not in default list)
-                var trulyCustomGames = gamesData.Where(g => g.IsCustom && 
-                    !defaultGames.Any(d => d.Name == g.Name && d.Repository == g.Repository)).ToList();
-                
-                // Find the game to update among truly custom games
-                var gameToUpdate = trulyCustomGames.FirstOrDefault(g => g.Name == SelectedGame.Name);
+                var appToUpdate = gamesData.FirstOrDefault(g => g.Repository == SelectedGame.Repository) ??
+                    gamesData.FirstOrDefault(g => g.Name == SelectedGame.Name);
 
-                if (gameToUpdate == null)
+                if (appToUpdate == null)
                 {
-                    await ShowMessageBoxAsync("Game not found or cannot be modified.", "Error");
+                    await ShowMessageBoxAsync("App not found.", "Error");
                     return;
                 }
-
-                // Check for duplicates with other custom games (excluding the current game)
-                var otherCustomGames = trulyCustomGames.Where(g => g.Name != SelectedGame.Name).ToList();
-                if (otherCustomGames.Any(g => g.Name == SelectedGame.Name || g.Repository == SelectedGame.Repository))
+                if (gamesData.Any(g => !ReferenceEquals(g, appToUpdate) && (g.Name == SelectedGame.Name || g.Repository == SelectedGame.Repository)))
                 {
-                    await ShowMessageBoxAsync("A game with this name or repository already exists.", "Duplicate Game");
+                    await ShowMessageBoxAsync("An app with this name or repository already exists.", "Duplicate App");
                     return;
                 }
 
                 // Update the game properties
-                gameToUpdate.Name = SelectedGame.Name;
-                gameToUpdate.Repository = SelectedGame.Repository;
-                gameToUpdate.FolderName = SelectedGame.FolderName;
-                gameToUpdate.InstallPath = SelectedGame.InstallPath;
-                gameToUpdate.GameIconUrl = SelectedGame.GameIconUrl;
-
-                // Save all games (preserving standard and experimental)
-                await SaveGamesToJsonAsync(
-                    gamesData.Where(g => !g.IsExperimental && !g.IsCustom).ToList(),
-                    gamesData.Where(g => g.IsExperimental && !g.IsCustom).ToList(),
-                    trulyCustomGames // Only save truly custom games
-                );
+                appToUpdate.Name = SelectedGame.Name;
+                appToUpdate.Repository = SelectedGame.Repository;
+                appToUpdate.FolderName = SelectedGame.FolderName;
+                appToUpdate.InstallPath = SelectedGame.InstallPath;
+                appToUpdate.GameIconUrl = SelectedGame.GameIconUrl;
+                await SaveGamesToJsonAsync(gamesData);
 
                 // Refresh the main game list and manager
                 await _gameManager.LoadGamesAsync();
                 ApplySorting();
                 await LoadGamesManagerAsync();
                 ClearGameForm_Click(sender, e);
-                await ShowMessageBoxAsync($"Game '{gameToUpdate.Name}' updated successfully.", "Game Updated");
+                await ShowMessageBoxAsync($"App '{appToUpdate.Name}' updated successfully.", "App Updated");
             }
             catch (Exception ex)
             {
-                await ShowMessageBoxAsync($"Failed to update game: {ex.Message}", "Error");
+                await ShowMessageBoxAsync($"Failed to update app: {ex.Message}", "Error");
             }
         }
 
@@ -3605,9 +3449,9 @@ namespace GithubLauncher
             var button = sender as Button;
             var game = button?.Tag as GameInfo;
 
-            if (game == null || !game.IsCustom)
+            if (game == null)
             {
-                await ShowMessageBoxAsync("Cannot delete default games.", "Error");
+                await ShowMessageBoxAsync("Apps can be deleted from this list.", "Error");
                 return;
             }
 
@@ -3617,15 +3461,15 @@ namespace GithubLauncher
             try
             {
                 var gamesData = await LoadGamesFromJsonAsync();
-                var customGames = gamesData.Where(g => g.IsCustom && g.Name != game.Name).ToList();
+                var apps = gamesData.Where(g => g.Name != game.Name).ToList();
 
-                await SaveGamesToJsonAsync(customGames);
+                await SaveGamesToJsonAsync(apps);
                 await LoadGamesManagerAsync();
-                await ShowMessageBoxAsync($"Game '{game.Name}' deleted successfully.", "Game Deleted");
+                await ShowMessageBoxAsync($"App '{game.Name}' deleted successfully.", "App Deleted");
             }
             catch (Exception ex)
             {
-                await ShowMessageBoxAsync($"Failed to delete game: {ex.Message}", "Error");
+                await ShowMessageBoxAsync($"Failed to delete app: {ex.Message}", "Error");
             }
         }
 
@@ -3634,9 +3478,9 @@ namespace GithubLauncher
             var button = sender as Button;
             var game = button?.Tag as GameInfo;
 
-            if (game == null || !game.IsCustom)
+            if (game == null)
             {
-                await ShowMessageBoxAsync("Cannot edit default games.", "Error");
+                await ShowMessageBoxAsync("Apps can be edited from this list.", "Error");
                 return;
             }
 
@@ -3663,7 +3507,7 @@ namespace GithubLauncher
             {
                 var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
                 {
-                    Title = "Import Games JSON",
+                    Title = "Import Apps JSON",
                     FileTypeFilter = new[] { new FilePickerFileType("JSON Files") { Patterns = new[] { "*.json" } } },
                     AllowMultiple = false
                 });
@@ -3673,21 +3517,21 @@ namespace GithubLauncher
                     var importedData = await File.ReadAllTextAsync(files[0].Path.LocalPath);
                     var gamesData = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(importedData);
 
-                    if (gamesData != null && (gamesData.ContainsKey("standard") || gamesData.ContainsKey("experimental") || gamesData.ContainsKey("custom")))
+                    if (gamesData != null && (gamesData.ContainsKey("apps") || gamesData.ContainsKey("standard") || gamesData.ContainsKey("experimental") || gamesData.ContainsKey("custom")))
                     {
                         await SaveGamesToJsonAsync(gamesData);
                         await LoadGamesManagerAsync();
-                        await ShowMessageBoxAsync("Games imported successfully.", "Import Complete");
+                        await ShowMessageBoxAsync("Apps imported successfully.", "Import Complete");
                     }
                     else
                     {
-                        await ShowMessageBoxAsync("Invalid games.json format.", "Import Error");
+                        await ShowMessageBoxAsync("Invalid apps.json format.", "Import Error");
                     }
                 }
             }
             catch (Exception ex)
             {
-                await ShowMessageBoxAsync($"Failed to import games: {ex.Message}", "Error");
+                await ShowMessageBoxAsync($"Failed to import apps: {ex.Message}", "Error");
             }
         }
 
@@ -3698,41 +3542,18 @@ namespace GithubLauncher
                 var gamesData = await LoadGamesFromJsonAsync();
                 var exportData = new
                 {
-                    standard = gamesData.Where(g => !g.IsExperimental && !g.IsCustom).Select(g => new
-                    {
-                        g.Name,
-                        g.Repository,
-                        g.FolderName,
-                        g.InstallPath,
-                        g.GameIconUrl
-                    }).ToList(),
-                    experimental = gamesData.Where(g => g.IsExperimental && !g.IsCustom).Select(g => new
-                    {
-                        g.Name,
-                        g.Repository,
-                        g.FolderName,
-                        g.InstallPath,
-                        g.GameIconUrl
-                    }).ToList(),
-                    custom = gamesData.Where(g => g.IsCustom).Select(g => new
-                    {
-                        g.Name,
-                        g.Repository,
-                        g.FolderName,
-                        g.InstallPath,
-                        g.GameIconUrl
-                    }).ToList()
+                    apps = gamesData.Select(SerializeGame).ToList()
                 };
 
                 var options = new JsonSerializerOptions { WriteIndented = true };
-                var exportPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "games_export.json");
+                var exportPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "apps_export.json");
                 await File.WriteAllTextAsync(exportPath, JsonSerializer.Serialize(exportData, options));
 
-                await ShowMessageBoxAsync($"Games exported to {exportPath}", "Export Complete");
+                await ShowMessageBoxAsync($"Apps exported to {exportPath}", "Export Complete");
             }
             catch (Exception ex)
             {
-                await ShowMessageBoxAsync($"Failed to export games: {ex.Message}", "Error");
+                await ShowMessageBoxAsync($"Failed to export apps: {ex.Message}", "Error");
             }
         }
 
@@ -3745,16 +3566,16 @@ namespace GithubLauncher
 
                 foreach (var game in gamesData)
                 {
-                    if (string.IsNullOrEmpty(game.Name)) issues.Add($"Game '{game.Name}' has empty name");
-                    if (string.IsNullOrEmpty(game.Repository)) issues.Add($"Game '{game.Name}' has empty repository");
-                    if (string.IsNullOrEmpty(game.FolderName)) issues.Add($"Game '{game.Name}' has empty folder name");
+                    if (string.IsNullOrEmpty(game.Name)) issues.Add($"App '{game.Name}' has empty name");
+                    if (string.IsNullOrEmpty(game.Repository)) issues.Add($"App '{game.Name}' has empty repository");
+                    if (string.IsNullOrEmpty(game.FolderName)) issues.Add($"App '{game.Name}' has empty folder name");
                     if (game.GameIconUrl != null && !Uri.TryCreate(game.GameIconUrl, UriKind.Absolute, out _))
-                        issues.Add($"Game '{game.Name}' has invalid icon URL");
+                        issues.Add($"App '{game.Name}' has invalid icon URL");
                 }
 
                 if (issues.Count == 0)
                 {
-                    ValidationStatus = "All games are valid.";
+                    ValidationStatus = "All apps are valid.";
                 }
                 else
                 {
@@ -3767,49 +3588,69 @@ namespace GithubLauncher
                 ValidationStatus = $"Validation error: {ex.Message}";
             }
         }
-
         private async Task<List<GameInfo>> LoadGamesFromJsonAsync()
         {
-            var gamesPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "games.json");
-            if (!File.Exists(gamesPath)) return [];
+            var appsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "apps.json");
+            var legacyPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "games.json");
+            var sourcePath = File.Exists(appsPath) ? appsPath : legacyPath;
+            if (!File.Exists(sourcePath)) return [];
 
-            var json = await File.ReadAllTextAsync(gamesPath);
+            var json = await File.ReadAllTextAsync(sourcePath);
             using var document = JsonDocument.Parse(json);
             var root = document.RootElement;
 
-            var games = new List<GameInfo>();
+            var apps = new List<GameInfo>();
+            if (root.ValueKind == JsonValueKind.Array)
+            {
+                apps.AddRange(ParseGameArray(root, false, true));
+            }
+            else
+            {
+                if (root.TryGetProperty("apps", out var appsArray))
+                    apps.AddRange(ParseGameArray(appsArray, false, true));
+                foreach (var legacySection in new[] { "standard", "experimental", "custom" })
+                {
+                    if (root.TryGetProperty(legacySection, out var legacyArray))
+                        apps.AddRange(ParseGameArray(legacyArray, false, true));
+                }
+            }
 
-            if (root.TryGetProperty("standard", out var standardArray))
-                games.AddRange(ParseGameArray(standardArray, false, false));
-            if (root.TryGetProperty("experimental", out var experimentalArray))
-                games.AddRange(ParseGameArray(experimentalArray, true, false));
-            if (root.TryGetProperty("custom", out var customArray))
-                games.AddRange(ParseGameArray(customArray, false, true));
-
-            return games;
+            return apps
+                .GroupBy(app => app.Repository ?? string.Empty, StringComparer.OrdinalIgnoreCase)
+                .Select(group => group.First())
+                .ToList();
         }
 
         private List<GameInfo> ParseGameArray(JsonElement array, bool isExperimental, bool isCustom)
         {
-            var games = new List<GameInfo>();
+            var apps = new List<GameInfo>();
             foreach (var element in array.EnumerateArray())
             {
-                var game = new GameInfo
+                var app = new GameInfo
                 {
                     Name = element.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "",
                     Repository = element.TryGetProperty("repository", out var r) ? r.GetString() ?? "" : "",
                     FolderName = element.TryGetProperty("folderName", out var f) ? f.GetString() ?? "" : "",
                     InstallPath = element.TryGetProperty("installPath", out var installPath) ? installPath.GetString() : null,
-                    GameIconUrl = element.TryGetProperty("gameIconUrl", out var iconUrl) ? iconUrl.GetString() : null,
+                    GameIconUrl = GetConfiguredIconUrl(element),
                     PreferredVersion = element.TryGetProperty("preferredVersion", out var preferredVersion) ? preferredVersion.GetString() : null,
                     SkippedUpdateVersion = element.TryGetProperty("skippedUpdateVersion", out var skippedUpdateVersion) ? skippedUpdateVersion.GetString() : null,
-                    IsExperimental = isExperimental,
-                    IsCustom = isCustom,
+                    IsExperimental = false,
+                    IsCustom = true,
                     GameManager = _gameManager
                 };
-                games.Add(game);
+                apps.Add(app);
             }
-            return games;
+            return apps;
+        }
+
+        private static string? GetConfiguredIconUrl(JsonElement element)
+        {
+            if (element.TryGetProperty("appIconUrl", out var appIconUrl) && appIconUrl.ValueKind != JsonValueKind.Null)
+                return appIconUrl.GetString();
+            if (element.TryGetProperty("gameIconUrl", out var gameIconUrl) && gameIconUrl.ValueKind != JsonValueKind.Null)
+                return gameIconUrl.GetString();
+            return null;
         }
 
         private static object SerializeGame(GameInfo game)
@@ -3820,52 +3661,35 @@ namespace GithubLauncher
                 repository = game.Repository,
                 folderName = game.FolderName,
                 installPath = game.InstallPath,
-                gameIconUrl = game.GameIconUrl,
+                appIconUrl = game.GameIconUrl,
                 preferredVersion = game.PreferredVersion,
                 skippedUpdateVersion = game.SkippedUpdateVersion
             };
         }
-
-        private async Task SaveGamesToJsonAsync(List<GameInfo> standardGames, List<GameInfo> experimentalGames, List<GameInfo> customGames)
+        private async Task SaveGamesToJsonAsync(List<GameInfo> appsToSave)
         {
-            var gamesPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "games.json");
-
+            var appsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "apps.json");
             var data = new
             {
-                standard = standardGames.Select(SerializeGame).ToList(),
-                experimental = experimentalGames.Select(SerializeGame).ToList(),
-                custom = customGames.Select(SerializeGame).ToList()
+                apps = appsToSave.Select(SerializeGame).ToList()
             };
 
             var options = new JsonSerializerOptions { WriteIndented = true };
-            await File.WriteAllTextAsync(gamesPath, JsonSerializer.Serialize(data, options));
-        }
-
-        private async Task SaveGamesToJsonAsync(List<GameInfo> customGames)
-        {
-            var gamesPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "games.json");
-
-            // Load existing games to preserve standard and experimental arrays
-            var allGames = await LoadGamesFromJsonAsync();
-
-            var data = new
-            {
-                standard = allGames.Where(g => !g.IsExperimental && !g.IsCustom).Select(SerializeGame).ToList(),
-                experimental = allGames.Where(g => g.IsExperimental && !g.IsCustom).Select(SerializeGame).ToList(),
-                custom = customGames.Select(SerializeGame).ToList()
-            };
-
-            var options = new JsonSerializerOptions { WriteIndented = true };
-            await File.WriteAllTextAsync(gamesPath, JsonSerializer.Serialize(data, options));
+            await File.WriteAllTextAsync(appsPath, JsonSerializer.Serialize(data, options));
         }
 
         private async Task SaveGamesToJsonAsync(Dictionary<string, JsonElement> gamesData)
         {
-            var gamesPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "games.json");
-            var options = new JsonSerializerOptions { WriteIndented = true };
-            await File.WriteAllTextAsync(gamesPath, JsonSerializer.Serialize(gamesData, options));
+            var imported = new List<GameInfo>();
+            if (gamesData.TryGetValue("apps", out var appsArray))
+                imported.AddRange(ParseGameArray(appsArray, false, true));
+            foreach (var legacySection in new[] { "standard", "experimental", "custom" })
+            {
+                if (gamesData.TryGetValue(legacySection, out var legacyArray))
+                    imported.AddRange(ParseGameArray(legacyArray, false, true));
+            }
+            await SaveGamesToJsonAsync(imported);
         }
-
         private async Task PersistGameVersionPreferencesAsync(GameInfo game, string? preferredVersion, string? skippedUpdateVersion)
         {
             game.SetVersionPreferences(preferredVersion, skippedUpdateVersion);
@@ -3881,10 +3705,7 @@ namespace GithubLauncher
             matchingGame.PreferredVersion = game.PreferredVersion;
             matchingGame.SkippedUpdateVersion = game.SkippedUpdateVersion;
 
-            await SaveGamesToJsonAsync(
-                allGames.Where(g => !g.IsExperimental && !g.IsCustom).ToList(),
-                allGames.Where(g => g.IsExperimental && !g.IsCustom).ToList(),
-                allGames.Where(g => g.IsCustom).ToList());
+            await SaveGamesToJsonAsync(allGames);
         }
 
         private async Task PersistGameInstallLocationAsync(GameInfo game)
@@ -3900,10 +3721,7 @@ namespace GithubLauncher
             matchingGame.FolderName = game.FolderName;
             matchingGame.InstallPath = game.InstallPath;
 
-            await SaveGamesToJsonAsync(
-                allGames.Where(g => !g.IsExperimental && !g.IsCustom).ToList(),
-                allGames.Where(g => g.IsExperimental && !g.IsCustom).ToList(),
-                allGames.Where(g => g.IsCustom).ToList());
+            await SaveGamesToJsonAsync(allGames);
         }
 
         private async Task LoadGamesManagerAsync()
@@ -3920,7 +3738,7 @@ namespace GithubLauncher
             }
             catch (Exception ex)
             {
-                ValidationStatus = $"Failed to load games: {ex.Message}";
+                ValidationStatus = $"Failed to load apps: {ex.Message}";
             }
         }
 
@@ -3955,7 +3773,7 @@ namespace GithubLauncher
             // Update validation status
             if (string.IsNullOrEmpty(SelectedGame.Name))
             {
-                ValidationStatus = "Error: Game name is required";
+                ValidationStatus = "Error: App name is required";
             }
             else if (string.IsNullOrEmpty(SelectedGame.Repository))
             {
@@ -4006,9 +3824,9 @@ namespace GithubLauncher
             var button = sender as Button;
             var game = button?.Tag as GameInfo;
 
-            if (game == null || !game.IsCustom)
+            if (game == null)
             {
-                await ShowMessageBoxAsync("Cannot delete default games.", "Error");
+                await ShowMessageBoxAsync("Apps can be deleted from this list.", "Error");
                 return;
             }
 
@@ -4018,15 +3836,15 @@ namespace GithubLauncher
             try
             {
                 var gamesData = await LoadGamesFromJsonAsync();
-                var customGames = gamesData.Where(g => g.IsCustom && g.Name != game.Name).ToList();
+                var apps = gamesData.Where(g => g.Name != game.Name).ToList();
 
-                await SaveGamesToJsonAsync(customGames);
+                await SaveGamesToJsonAsync(apps);
                 await LoadGamesManagerAsync();
-                await ShowMessageBoxAsync($"Game '{game.Name}' deleted successfully.", "Game Deleted");
+                await ShowMessageBoxAsync($"App '{game.Name}' deleted successfully.", "App Deleted");
             }
             catch (Exception ex)
             {
-                await ShowMessageBoxAsync($"Failed to delete game: {ex.Message}", "Error");
+                await ShowMessageBoxAsync($"Failed to delete app: {ex.Message}", "Error");
             }
         }
 
@@ -4043,7 +3861,7 @@ namespace GithubLauncher
             SettingsPanel.IsVisible = false;
             ChangelogPanel.IsVisible = false;
 
-            // Show Manage Games panel
+            // Show Manage Apps panel
             _isGamesManagerOpen = true;
             var manageGamesPanel = this.FindControl<Border>("ManageGamesPanel");
             if (manageGamesPanel != null)
@@ -4052,12 +3870,12 @@ namespace GithubLauncher
             }
 
             // Update header text
-            HeaderTitleText.Text = "Manage Games";
+            HeaderTitleText.Text = "Manage Apps";
 
             // Initialize tabs
             SwitchToManageGamesTab(null, null);
 
-            // Load games from games.json
+            // Load apps from apps.json
             LoadGamesFromJson();
         }
 
@@ -4067,18 +3885,11 @@ namespace GithubLauncher
             {
                 var games = await LoadGamesFromJsonAsync();
                 var settings = AppSettings.Load();
-
-                var stableGames = games.Where(g => !g.IsExperimental && !g.IsCustom).ToList();
-                var experimentalGames = games.Where(g => g.IsExperimental && !g.IsCustom).ToList();
-                var customGames = games.Where(g => g.IsCustom).ToList();
-
-                UpdateGamesListControl("StableGamesListControl", stableGames, settings);
-                UpdateGamesListControl("ExperimentalGamesListControl", experimentalGames, settings);
-                UpdateGamesListControl("CustomGamesListControl", customGames, settings);
+                UpdateGamesListControl("CustomGamesListControl", games, settings);
             }
             catch (Exception ex)
             {
-                _ = ShowMessageBoxAsync($"Error loading games: {ex.Message}", "Error");
+                _ = ShowMessageBoxAsync($"Error loading apps: {ex.Message}", "Error");
             }
         }
 
@@ -4096,7 +3907,7 @@ namespace GithubLauncher
                     GameIconUrl = g.GameIconUrl,
                     IconUrl = g.IconUrl,
                     IsInstalled = !string.IsNullOrEmpty(g.FolderName) && Directory.Exists(g.GetInstallPath(_gameManager.GamesFolder)),
-                    CanRemove = g.IsCustom && !_gameManager.IsDefaultGame(g.Repository ?? string.Empty),
+                    CanRemove = true,
                     HideGameLabel = _gameManager.IsManuallyHidden(g) ? "Unhide" : "Hide",
                     GameInfoRef = g
                 }).ToList();
@@ -4172,61 +3983,58 @@ namespace GithubLauncher
                 }
 
                 var games = await LoadGamesFromJsonAsync();
-                var standardGames = games.Where(g => !g.IsExperimental && !g.IsCustom).ToList();
-                var experimentalGames = games.Where(g => g.IsExperimental && !g.IsCustom).ToList();
-                var customGames = games.Where(g => g.IsCustom).ToList();
 
                 if (!string.IsNullOrEmpty(_editingGameRepository))
                 {
                     // Update Existing Record
-                    var gameToUpdate = games.FirstOrDefault(g => g.Repository == _editingGameRepository);
-                    if (gameToUpdate == null)
+                    var appToUpdate = games.FirstOrDefault(g => g.Repository == _editingGameRepository);
+                    if (appToUpdate == null)
                     {
-                        _ = ShowMessageBoxAsync("Could not find the game to update.", "Error");
+                        _ = ShowMessageBoxAsync("Could not find the app to update.", "Error");
                         return;
                     }
 
-                    // Verify a different game doesn't already have the new name
+                    // Verify a different app does not already have the new name
                     if (name != _editingGameName && games.Any(g => g.Name == name))
                     {
-                        _ = ShowMessageBoxAsync("A game with this name already exists.", "Duplicate Name");
+                        _ = ShowMessageBoxAsync("An app with this name already exists.", "Duplicate Name");
                         return;
                     }
 
                     // Update folder name if changed, if folder exists
-                    if (gameToUpdate.FolderName != folderName && !string.IsNullOrEmpty(gameToUpdate.FolderName))
+                    if (appToUpdate.FolderName != folderName && !string.IsNullOrEmpty(appToUpdate.FolderName))
                     {
-                        var oldPath = Path.Combine(_settings.GamesPath, gameToUpdate.FolderName);
-                        var newPath = Path.Combine(_settings.GamesPath, folderName);
+                        var oldPath = Path.Combine(_settings.AppsPath, appToUpdate.FolderName);
+                        var newPath = Path.Combine(_settings.AppsPath, folderName);
 
                         if (Directory.Exists(oldPath))
                         {
                             try
                             {
                                 Directory.Move(oldPath, newPath);
-                                System.Diagnostics.Debug.WriteLine($"Renamed folder: {gameToUpdate.FolderName} -> {folderName}");
+                                System.Diagnostics.Debug.WriteLine($"Renamed folder: {appToUpdate.FolderName} -> {folderName}");
                             }
                             catch (Exception ex)
                             {
-                                System.Diagnostics.Debug.WriteLine($"Failed to rename folder {gameToUpdate.FolderName}: {ex.Message}");
-                                _ = ShowMessageBoxAsync($"Failed to rename folder {gameToUpdate.FolderName}", $"{ex.Message}");
+                                System.Diagnostics.Debug.WriteLine($"Failed to rename folder {appToUpdate.FolderName}: {ex.Message}");
+                                _ = ShowMessageBoxAsync($"Failed to rename folder {appToUpdate.FolderName}", $"{ex.Message}");
                             }
                         }
                     }
 
-                    gameToUpdate.Name = name;
-                    gameToUpdate.FolderName = folderName;
-                    gameToUpdate.GameIconUrl = iconUrl;
+                    appToUpdate.Name = name;
+                    appToUpdate.FolderName = folderName;
+                    appToUpdate.GameIconUrl = iconUrl;
 
-                    await SaveGamesToJsonAsync(standardGames, experimentalGames, customGames);
-                    _ = ShowMessageBoxAsync("Game entry updated successfully", "Game Updated");
+                    await SaveGamesToJsonAsync(games);
+                    _ = ShowMessageBoxAsync("app entry updated successfully", "App Updated");
                 }
                 else
                 {
                     // Create New Record
                     if (games.Any(g => g.Name == name || g.Repository == repository || g.FolderName == folderName))
                     {
-                        _ = ShowMessageBoxAsync("A game with this name, repository, or folder name already exists", "Duplicate Game");
+                        _ = ShowMessageBoxAsync("An app with this name, repository, or folder name already exists", "Duplicate App");
                         return;
                     }
 
@@ -4240,9 +4048,9 @@ namespace GithubLauncher
                         IsExperimental = false
                     };
 
-                    customGames.Add(newGame);
-                    await SaveGamesToJsonAsync(standardGames, experimentalGames, customGames);
-                    _ = ShowMessageBoxAsync("New game entry created successfully", "Game Added");
+                    games.Add(newGame);
+                    await SaveGamesToJsonAsync(games);
+                    _ = ShowMessageBoxAsync("New app entry created successfully", "App Added");
                 }
 
                 LoadGamesFromJson();
@@ -4251,7 +4059,7 @@ namespace GithubLauncher
             }
             catch (Exception ex)
             {
-                _ = ShowMessageBoxAsync($"Error saving game entry: {ex.Message}", "Error");
+                _ = ShowMessageBoxAsync($"Error saving app entry: {ex.Message}", "Error");
             }
         }
 
@@ -4273,7 +4081,7 @@ namespace GithubLauncher
 
                     if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(repository) || string.IsNullOrEmpty(folderName))
                     {
-                        _ = ShowMessageBoxAsync("Unable to extract game information for editing.", "Error");
+                        _ = ShowMessageBoxAsync("Unable to extract app information for editing.", "Error");
                         return;
                     }
 
@@ -4287,7 +4095,7 @@ namespace GithubLauncher
                     var cancelButton = this.FindControl<Button>("CancelButton");
                     var createEditButton = this.FindControl<Button>("CreateEditButton");
 
-                    if (formTitle != null) formTitle.Text = "Edit Game Entry";
+                    if (formTitle != null) formTitle.Text = "Edit App Entry";
                     if (nameBox != null) nameBox.Text = name;
                     if (repoBox != null)
                     {
@@ -4358,7 +4166,7 @@ namespace GithubLauncher
                     if (string.IsNullOrEmpty(repository) || string.IsNullOrEmpty(gameName)) return;
 
                     var confirm = await ShowMessageBoxAsync(
-                        $"Are you sure you want to remove '{gameName}' from your games list?\n\nThis will only remove it from the launcher, not delete your files.",
+                        $"Are you sure you want to remove '{gameName}' from your apps list?\n\nThis will only remove it from the launcher, not delete your files.",
                         "Confirm Removal",
                         true);
 
@@ -4369,19 +4177,8 @@ namespace GithubLauncher
 
                     if (gameToRemove != null)
                     {
-                        if (_gameManager.IsDefaultGame(repository))
-                        {
-                            await ShowMessageBoxAsync("You can only remove custom games. Default games cannot be removed from this menu.", "Cannot Remove");
-                            return;
-                        }
-
                         games.Remove(gameToRemove);
-
-                        await SaveGamesToJsonAsync(
-                            games.Where(g => !g.IsExperimental && !g.IsCustom).ToList(),
-                            games.Where(g => g.IsExperimental && !g.IsCustom).ToList(),
-                            games.Where(g => g.IsCustom).ToList()
-                        );
+                        await SaveGamesToJsonAsync(games);
 
                         await _gameManager.LoadGamesAsync();
                         ApplySorting();
@@ -4392,7 +4189,7 @@ namespace GithubLauncher
                 }
                 catch (Exception ex)
                 {
-                    _ = ShowMessageBoxAsync($"Error removing game: {ex.Message}", "Error");
+                    _ = ShowMessageBoxAsync($"Error removing app: {ex.Message}", "Error");
                 }
             }
         }
@@ -4401,7 +4198,7 @@ namespace GithubLauncher
         {
             _isGamesManagerOpen = false;
 
-            // Hide Manage Games panel
+            // Hide Manage Apps panel
             var manageGamesPanel = this.FindControl<Border>("ManageGamesPanel");
             if (manageGamesPanel != null)
             {
@@ -5619,7 +5416,7 @@ namespace GithubLauncher
 
             if (game == null)
             {
-                await ShowMessageBoxAsync("Unable to identify the selected game.", "Error");
+                await ShowMessageBoxAsync("Unable to identify the selected app.", "Error");
                 return;
             }
 
@@ -5651,7 +5448,7 @@ namespace GithubLauncher
 
             if (game == null)
             {
-                await ShowMessageBoxAsync("Unable to identify the selected game.", "Error");
+                await ShowMessageBoxAsync("Unable to identify the selected app.", "Error");
                 return;
             }
 
@@ -5721,3 +5518,4 @@ namespace GithubLauncher
     }
 
 }
+

@@ -163,7 +163,7 @@
 													  Click="RemoveCustomIcon_Click"
 													  CommandParameter="{Binding}"
 													  IsVisible="{Binding HasCustomIcon}"/>
-											<MenuItem Header="Hide Game"
+											<MenuItem Header="Hide App"
 													  Click="HideGame_Click"
 													  CommandParameter="{Binding}"/>
 										</MenuItem>
@@ -299,7 +299,7 @@
 												  Click="RemoveCustomIcon_Click"
 												  CommandParameter="{Binding}"
 												  IsVisible="{Binding HasCustomIcon}"/>
-										<MenuItem Header="Hide Game"
+										<MenuItem Header="Hide App"
 												  Click="HideGame_Click"
 												  CommandParameter="{Binding}"/>
 									</MenuItem>
@@ -361,7 +361,7 @@
 							<Image Width="48" Source="{Binding ButtonImage}"/>
 						</Button>
 
-						<!-- Game Info -->
+						<!-- App Info -->
 						<StackPanel Grid.Column="1" VerticalAlignment="Center">
 							<TextBlock Text="{Binding Name}"
 									   FontSize="14"
@@ -856,7 +856,7 @@
 							</Grid>
 						</Button>
 
-						<!-- Manage Games Button -->
+						<!-- Manage Apps Button -->
 						<Button x:Name="ManageGamesButton"
 								Classes="settings"
 								Margin="0,0,0,4"
@@ -868,7 +868,7 @@
 								<Image Width="32" Height="32" 
 									   Source="avares://GithubLauncher/Assets/DefaultGame.png"
 									   Margin="0,0,12,0"/>
-								<TextBlock Text="Manage Games" VerticalAlignment="Center"/>
+								<TextBlock Text="Manage Apps" VerticalAlignment="Center"/>
 							</StackPanel>
 						</Button>
 
@@ -925,7 +925,7 @@
 									Width="216"
 									HorizontalAlignment="Left"
 									Click="UnhideAllGamesButton_Click">
-								<TextBlock Text="All Games"/>
+								<TextBlock Text="All Apps"/>
 							</Button>
 
 							<Button x:Name="HideNonInstalledButton"
@@ -934,33 +934,6 @@
 									HorizontalAlignment="Left"
 									Click="HideNonInstalledButton_Click">
 								<TextBlock Text="Installed Only"/>
-							</Button>
-
-							<Button x:Name="HideNonStableButton"
-									Classes="settings"
-									Width="216"
-									HorizontalAlignment="Left"
-									Click="HideNonStableButton_Click"
-									IsVisible="{Binding ShowExperimentalGames}">
-								<TextBlock Text="Stable Only"/>
-							</Button>
-
-							<Button x:Name="OnlyExperimentalGamesButton"
-									Classes="settings"
-									Width="216"
-									HorizontalAlignment="Left"
-									Click="OnlyExperimentalGamesButton_Click"
-									IsVisible="{Binding ShowExperimentalGames}">
-								<TextBlock Text="Experimental Only"/>
-							</Button>
-
-							<Button x:Name="OnlyCustomGamesButton"
-									Classes="settings"
-									Width="216"
-									HorizontalAlignment="Left"
-									Click="OnlyCustomGamesButton_Click"
-									IsVisible="{Binding ShowCustomGames}">
-								<TextBlock Text="Custom Games Only"/>
 							</Button>
 						</StackPanel>
 				</ScrollViewer>
@@ -1032,8 +1005,6 @@
 								<ComboBoxItem Content="Installed First" Tag="Installed"/>
 								<ComboBoxItem Content="Not Installed First" Tag="NotInstalled"/>
 								<ComboBoxItem Content="Last Played" Tag="LastPlayed"/>
-								<ComboBoxItem Content="Experimental" Tag="Experimental" IsVisible="{Binding ShowExperimentalGames}"/>
-								<ComboBoxItem Content="Custom Games" Tag="Custom" IsVisible="{Binding ShowCustomGames}"/>
 							</ComboBox>
 
 							<!-- Version Text -->
@@ -1077,7 +1048,7 @@
 				</Grid>
 			</Border>
 
-			<!-- Games Content with Settings Panel Overlay -->
+			<!-- Apps Content with Settings Panel Overlay -->
 			<Grid Grid.Row="1">
 
 				<!-- Background Image -->
@@ -1091,7 +1062,7 @@
 					Stretch="Fill"
 					Opacity="{Binding BackgroundOpacity}"/>
 
-				<!-- Main Game List -->
+				<!-- Main App List -->
 				<ScrollViewer VerticalScrollBarVisibility="Auto" x:Name="GameScrollViewer" Margin="30,20,30,30">
 					<Grid>
 						<ItemsControl ItemsSource="{Binding Games}" x:Name="ListViewControl"
@@ -1164,7 +1135,7 @@
 													  FontSize="13" FontWeight="SemiBold"
 													  Checked="PortableCheckBox_Checked"
 													  Unchecked="PortableCheckBox_Unchecked"/>
-											<TextBlock Text="Store data in the game directory instead of your user profile"
+											<TextBlock Text="Store data in the app directory instead of your user profile"
 													   FontSize="11"
 													   Foreground="{DynamicResource ThemeTextSecondary}"
 													   Margin="20,0,0,0"/>
@@ -1190,43 +1161,7 @@
 													  FontSize="13" FontWeight="SemiBold"
 													  Checked="CloseAfterLaunchCheckBox_Checked"
 													  Unchecked="CloseAfterLaunchCheckBox_Unchecked"/>
-											<TextBlock Text="Close the launcher automatically after starting a game"
-													   FontSize="11"
-													   Foreground="{DynamicResource ThemeTextSecondary}"
-													   Margin="20,0,0,0"/>
-										</StackPanel>
-
-										<!-- Divider -->
-										<Border Height="1" Background="{DynamicResource ThemeBorder}" Margin="0,8,0,8"/>
-
-										<!-- Library -->
-										<TextBlock Text="LIBRARY"
-												   FontSize="10" FontWeight="Bold"
-												   Foreground="{DynamicResource ThemeTextSecondary}"
-												   LetterSpacing="1"
-												   Margin="0,0,0,4"/>
-
-										<StackPanel Spacing="2">
-											<CheckBox x:Name="ShowExperimentalCheckBox"
-													  Content="Show Experimental Games"
-													  Foreground="{DynamicResource ThemeText}"
-													  FontSize="13" FontWeight="SemiBold"
-													  Checked="ShowExperimentalCheckBox_Checked"
-													  Unchecked="ShowExperimentalCheckBox_Unchecked"/>
-											<TextBlock Text="Display Recomp games still in experimental phase"
-													   FontSize="11"
-													   Foreground="{DynamicResource ThemeTextSecondary}"
-													   Margin="20,0,0,0"/>
-										</StackPanel>
-
-										<StackPanel Spacing="2">
-											<CheckBox x:Name="ShowCustomGamesCheckBox"
-													  Content="Show Custom Games"
-													  Foreground="{DynamicResource ThemeText}"
-													  FontSize="13" FontWeight="SemiBold"
-													  Checked="ShowCustomGamesCheckBox_Checked"
-													  Unchecked="ShowCustomGamesCheckBox_Unchecked"/>
-											<TextBlock Text="Display non-Recomp games compatible with this launcher"
+											<TextBlock Text="Close the launcher automatically after starting an app"
 													   FontSize="11"
 													   Foreground="{DynamicResource ThemeTextSecondary}"
 													   Margin="20,0,0,0"/>
@@ -1236,7 +1171,7 @@
 										<Border Height="1" Background="{DynamicResource ThemeBorder}" Margin="0,8,0,8"/>
 
 										<!-- Install Path -->
-										<TextBlock Text="GAME INSTALL PATH"
+										<TextBlock Text="APP INSTALL PATH"
 												   FontSize="10" FontWeight="Bold"
 												   Foreground="{DynamicResource ThemeTextSecondary}"
 												   LetterSpacing="1"
@@ -1326,7 +1261,7 @@
 													 Watermark="Example: flatpak run com.usebottles.bottles -e {exe}"
 													 Text="{Binding Settings.LinuxWindowsLaunchCommand, Mode=TwoWay}"
 													 TextChanged="LinuxWindowsLaunchCommandTextBox_TextChanged"/>
-											<TextBlock Text="Optional override for Windows-only games on Linux. Use {exe}, {gamePath}, or {exeDir}. Leave blank to auto-detect Wine/Proton."
+											<TextBlock Text="Optional override for Windows-only apps on Linux. Use {exe}, {appPath}, or {exeDir}. Leave blank to auto-detect Wine/Proton."
 													   FontSize="11"
 													   TextWrapping="Wrap"
 													   Foreground="{DynamicResource ThemeTextSecondary}"
@@ -1500,8 +1435,8 @@
 									</StackPanel>
 								</TabItem>
 
-								<!-- Game Cards Tab -->
-								<TabItem Header="Game Cards">
+								<!-- App Cards Tab -->
+								<TabItem Header="App Cards">
 									<StackPanel Margin="16,12,16,16" Spacing="4">
 
 										<!-- Layout -->
@@ -1518,7 +1453,7 @@
 													  FontSize="13" FontWeight="SemiBold"
 													  Checked="UseGridViewCheckBox_Checked"
 													  Unchecked="UseGridViewCheckBox_Unchecked"/>
-											<TextBlock Text="Display games in a grid instead of a list"
+											<TextBlock Text="Display apps in a grid instead of a list"
 													   FontSize="11"
 													   Foreground="{DynamicResource ThemeTextSecondary}"
 													   Margin="20,0,0,0"/>
@@ -1583,7 +1518,7 @@
 										<!-- Divider -->
 										<Border Height="1" Background="{DynamicResource ThemeBorder}" Margin="0,8,0,8"/>
 
-										<!-- Game Images -->
+										<!-- App Images -->
 										<TextBlock Text="GAME IMAGES"
 												   FontSize="10" FontWeight="Bold"
 												   Foreground="{DynamicResource ThemeTextSecondary}"
@@ -1782,7 +1717,7 @@
 					</Grid>
 				</Border>
 
-				<!-- Manage Games Panel -->
+				<!-- Manage Apps Panel -->
 				<Border x:Name="ManageGamesPanel"
 						Grid.RowSpan="2"
 						Background="{DynamicResource ThemeBase}"
@@ -1805,7 +1740,7 @@
 													<ColumnDefinition Width="Auto"/>
 												</Grid.ColumnDefinitions>
 												<TextBlock Grid.Column="0"
-														   Text="STABLE"
+														   Text="APPS"
 														   FontSize="16"
 														   FontWeight="Bold"
 														   Foreground="{DynamicResource ThemeText}"
@@ -1814,163 +1749,7 @@
 														Classes="options"
 														Content="Unhide All"
 														FontSize="12"
-														Tag="Stable"
-														Click="UnhideAllManuallyHidden_Click"/>
-											</Grid>
-											<Border Height="1" Background="{DynamicResource ThemeBorder}" Margin="0,4,0,8"/>
-							
-											<ItemsControl x:Name="StableGamesListControl">
-												<ItemsControl.ItemTemplate>
-													<DataTemplate>
-														<Border Background="{DynamicResource ThemeBase}"
-																BorderBrush="{DynamicResource ThemeBorder}"
-																BorderThickness="1"
-																CornerRadius="6"
-																Padding="12"
-																Margin="0,8,0,0">
-															<Grid>
-																<Grid.ColumnDefinitions>
-																	<ColumnDefinition Width="80"/>
-																	<ColumnDefinition Width="*"/>
-																	<ColumnDefinition Width="Auto"/>
-																</Grid.ColumnDefinitions>
-
-																<asyncImageLoader:AdvancedImage Grid.Column="0"
-																								Source="{Binding IconUrl}"
-																								Width="128"
-																								Height="128"
-																								VerticalAlignment="Center"
-																								HorizontalAlignment="Left"
-																								Stretch="Uniform"/>
-
-																<StackPanel Grid.Column="1" Spacing="4" Margin="76,0,0,0">
-																	<TextBlock Text="{Binding Name}" FontWeight="Bold" Foreground="{DynamicResource ThemeText}" FontSize="14"/>
-																	<TextBlock Text="{Binding Repository}" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="12"/>
-																	<TextBlock Text="{Binding FolderName}" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="12"/>
-																</StackPanel>
-
-																<StackPanel Grid.Column="2" Orientation="Vertical" Spacing="4">
-																	<Button Classes="options"
-																			Content="Edit"
-																			FontSize="12"
-																			Width="80"
-																			Click="EditGameEntry_Click"
-																			Tag="{Binding}"/>
-																	<Button Classes="options"
-																			Content="{Binding HideGameLabel}"
-																			FontSize="12"
-																			Width="80"
-																			Click="ToggleHideGame_Click"
-																			Tag="{Binding}"/>
-																</StackPanel>
-															</Grid>
-														</Border>
-													</DataTemplate>
-												</ItemsControl.ItemTemplate>
-											</ItemsControl>
-										</StackPanel>
-									</Border>
-
-									<Border Background="{DynamicResource ThemeDarker}"
-											BorderBrush="{DynamicResource ThemeBorder}"
-											BorderThickness="1"
-											CornerRadius="8"
-											Padding="16">
-										<StackPanel Spacing="12">
-											<Grid>
-												<Grid.ColumnDefinitions>
-													<ColumnDefinition Width="*"/>
-													<ColumnDefinition Width="Auto"/>
-												</Grid.ColumnDefinitions>
-												<TextBlock Grid.Column="0"
-														   Text="EXPERIMENTAL"
-														   FontSize="16"
-														   FontWeight="Bold"
-														   Foreground="{DynamicResource ThemeText}"
-														   VerticalAlignment="Center"/>
-												<Button Grid.Column="1"
-														Classes="options"
-														Content="Unhide All"
-														FontSize="12"
-														Tag="Experimental"
-														Click="UnhideAllManuallyHidden_Click"/>
-											</Grid>
-											<Border Height="1" Background="{DynamicResource ThemeBorder}" Margin="0,4,0,8"/>
-							
-											<ItemsControl x:Name="ExperimentalGamesListControl">
-												<ItemsControl.ItemTemplate>
-													<DataTemplate>
-														<Border Background="{DynamicResource ThemeBase}"
-																BorderBrush="{DynamicResource ThemeBorder}"
-																BorderThickness="1"
-																CornerRadius="6"
-																Padding="12"
-																Margin="0,8,0,0">
-															<Grid>
-																<Grid.ColumnDefinitions>
-																	<ColumnDefinition Width="80"/>
-																	<ColumnDefinition Width="*"/>
-																	<ColumnDefinition Width="Auto"/>
-																</Grid.ColumnDefinitions>
-
-																<asyncImageLoader:AdvancedImage Grid.Column="0"
-																								Source="{Binding IconUrl}"
-																								Width="128"
-																								Height="128"
-																								VerticalAlignment="Center"
-																								HorizontalAlignment="Left"
-																								Stretch="Uniform"/>
-
-																<StackPanel Grid.Column="1" Spacing="4" Margin="76,0,0,0">
-																	<TextBlock Text="{Binding Name}" FontWeight="Bold" Foreground="{DynamicResource ThemeText}" FontSize="14"/>
-																	<TextBlock Text="{Binding Repository}" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="12"/>
-																	<TextBlock Text="{Binding FolderName}" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="12"/>
-																</StackPanel>
-
-																<StackPanel Grid.Column="2" Orientation="Vertical" Spacing="4">
-																	<Button Classes="options"
-																			Content="Edit"
-																			FontSize="12"
-																			Width="80"
-																			Click="EditGameEntry_Click"
-																			Tag="{Binding}"/>
-																	<Button Classes="options"
-																			Content="{Binding HideGameLabel}"
-																			FontSize="12"
-																			Width="80"
-																			Click="ToggleHideGame_Click"
-																			Tag="{Binding}"/>
-																</StackPanel>
-															</Grid>
-														</Border>
-													</DataTemplate>
-												</ItemsControl.ItemTemplate>
-											</ItemsControl>
-										</StackPanel>
-									</Border>
-
-									<Border Background="{DynamicResource ThemeDarker}"
-											BorderBrush="{DynamicResource ThemeBorder}"
-											BorderThickness="1"
-											CornerRadius="8"
-											Padding="16">
-										<StackPanel Spacing="12">
-											<Grid>
-												<Grid.ColumnDefinitions>
-													<ColumnDefinition Width="*"/>
-													<ColumnDefinition Width="Auto"/>
-												</Grid.ColumnDefinitions>
-												<TextBlock Grid.Column="0"
-														   Text="CUSTOM"
-														   FontSize="16"
-														   FontWeight="Bold"
-														   Foreground="{DynamicResource ThemeText}"
-														   VerticalAlignment="Center"/>
-												<Button Grid.Column="1"
-														Classes="options"
-														Content="Unhide All"
-														FontSize="12"
-														Tag="Custom"
+														Tag="Apps"
 														Click="UnhideAllManuallyHidden_Click"/>
 											</Grid>
 											<Border Height="1" Background="{DynamicResource ThemeBorder}" Margin="0,4,0,8"/>
@@ -2033,7 +1812,7 @@
 											</ItemsControl>
 
 											<Button Classes="options"
-													Content="+ Add New Custom Game"
+													Content="+ Add New App"
 													HorizontalAlignment="Stretch"
 													Height="44"
 													Margin="0,8,0,0"
@@ -2158,3 +1937,4 @@
 	</Grid>
   </Border>
 </Window>
+

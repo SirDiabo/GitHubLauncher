@@ -11,8 +11,6 @@ namespace GithubLauncher
         public bool FirstStartup { get; set; } = true;
         public bool IconFill { get; set; } = true;
         public bool UseGridView { get; set; } = true;
-        public bool ShowExperimentalGames { get; set; } = false;
-        public bool ShowCustomGames { get; set; } = false;
         public float IconOpacity { get; set; } = 1.0f;
         public int IconSize { get; set; } = 220;
         public int IconMargin { get; set; } = 8;
@@ -23,9 +21,9 @@ namespace GithubLauncher
         public string PrimaryColor { get; set; } = "#18181b";
         public string SecondaryColor { get; set; } = "#404040";
         public TargetOS Platform { get; set; } = TargetOS.Auto;
-        public List<string> HiddenGames { get; set; } = new List<string>();
-        public List<string> ManuallyHiddenGames { get; set; } = new List<string>();
-        public string GamesPath { get; set; } = string.Empty;
+        public List<string> HiddenApps { get; set; } = new List<string>();
+        public List<string> ManuallyHiddenApps { get; set; } = new List<string>();
+        public string AppsPath { get; set; } = string.Empty;
         public string GitHubApiToken { get; set; } = string.Empty;
         public string SortBy { get; set; } = "LastPlayed";
         public bool StartFullscreen { get; set; } = false;
@@ -77,3 +75,4 @@ namespace GithubLauncher
         }
     }
 }
+

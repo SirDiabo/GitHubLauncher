@@ -791,14 +791,14 @@ namespace GithubLauncher.Models
         public async Task ForceUpdateAsync(HttpClient httpClient, string gamesFolder)
         {
             if (string.IsNullOrWhiteSpace(FolderName))
-                throw new InvalidOperationException("Game configuration is invalid (missing folder name).");
+                throw new InvalidOperationException("App configuration is invalid (missing folder name).");
 
             if (string.IsNullOrWhiteSpace(Repository))
-                throw new InvalidOperationException("Game configuration is invalid (missing repository).");
+                throw new InvalidOperationException("App configuration is invalid (missing repository).");
 
             var gamePath = GetInstallPath(gamesFolder);
             if (!Directory.Exists(gamePath))
-                throw new DirectoryNotFoundException($"Game folder not found: {gamePath}");
+                throw new DirectoryNotFoundException($"App folder not found: {gamePath}");
 
             var versionFile = Path.Combine(gamePath, "version.txt");
 
@@ -1257,7 +1257,7 @@ namespace GithubLauncher.Models
         {
             if (string.IsNullOrEmpty(FolderName))
             {
-                await ShowMessageBoxAsync("Game configuration is invalid (missing folder name).", "Configuration Error");
+                await ShowMessageBoxAsync("App configuration is invalid (missing folder name).", "Configuration Error");
                 return;
             }
 
@@ -1444,13 +1444,13 @@ namespace GithubLauncher.Models
         {
             if (string.IsNullOrEmpty(FolderName))
             {
-                await ShowMessageBoxAsync("Game configuration is invalid (missing folder name).", "Configuration Error");
+                await ShowMessageBoxAsync("App configuration is invalid (missing folder name).", "Configuration Error");
                 return;
             }
 
             if (string.IsNullOrEmpty(Repository))
             {
-                await ShowMessageBoxAsync("Game configuration is invalid (missing repository).", "Configuration Error");
+                await ShowMessageBoxAsync("App configuration is invalid (missing repository).", "Configuration Error");
                 return;
             }
 
@@ -1994,7 +1994,7 @@ namespace GithubLauncher.Models
 
                 if (!Directory.Exists(gamePath))
                 {
-                    await ShowMessageBoxAsync($"Game directory not found: {gamePath}", "Directory Not Found");
+                    await ShowMessageBoxAsync($"App directory not found: {gamePath}", "Directory Not Found");
                     return;
                 }
 
@@ -2030,7 +2030,7 @@ namespace GithubLauncher.Models
                 {
                     await ShowMessageBoxAsync(
                         "Only a Windows executable was found, but no Linux Windows-runner is configured or detected.\n\n" +
-                        "Install Wine/Proton or set a custom command in Settings to launch Windows games.",
+                        "Install Wine/Proton or set a custom command in Settings to launch Windows apps.",
                         "Windows Runner Not Found");
                     return;
                 }
@@ -2505,3 +2505,4 @@ namespace GithubLauncher.Models
         }
     }
 }
+

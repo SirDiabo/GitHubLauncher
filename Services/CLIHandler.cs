@@ -138,13 +138,13 @@ namespace GithubLauncher
 
                 // Force load all games
                 var settings = AppSettings.Load();
-                var originalHiddenGames = settings.HiddenGames.ToList();
-                settings.HiddenGames.Clear();
+                var originalHiddenApps = settings.HiddenApps.ToList();
+                settings.HiddenApps.Clear();
 
                 await _gameManager.LoadGamesAsync();
 
                 // Restore hidden games list
-                settings.HiddenGames = originalHiddenGames;
+                settings.HiddenApps = originalHiddenApps;
             }
         }
 
@@ -195,28 +195,28 @@ namespace GithubLauncher
             LoadVersion();
 
             Console.WriteLine();
-            WriteColor("  _   _   __   _  _   ", ColorTitle);
-            WriteColor(" ____                                 ", ColorMuted);
+            WriteColor("  __  _   _   _   _   _   _   _      ", ColorTitle);
+            WriteColor(" _                                    ", ColorMuted);
             Console.WriteLine();
 
-            WriteColor(" | \\ | | / /_ | || |  ", ColorTitle);
-            WriteColor("|  _ \\ ___  ___ ___  _ __ ___  _ __   ", ColorMuted);
+            WriteColor(" / _|| | | | | | | | | | | | |_|     ", ColorTitle);
+            WriteColor("| |   __ _ _   _ _ __ | | ___  _   _  ", ColorMuted);
             Console.WriteLine();
 
-            WriteColor(" |  \\| || '_ \\| || |_ ", ColorTitle);
-            WriteColor("| |_) / _ \\/ __/ _ \\| '_ ` _ \\| '_ \\  ", ColorMuted);
+            WriteColor("| |_ | |_| | | |_| |_| |_| | | | |   ", ColorTitle);
+            WriteColor("| |  / _` | | | | '_ \\| |/ _ \\| | | | ", ColorMuted);
             Console.WriteLine();
 
-            WriteColor(" | |\\  || (_) |__   _|", ColorTitle);
-            WriteColor("|  _ <  __/ (_| (_) | | | | | | |_) | ", ColorMuted);
+            WriteColor("|  _||  _  | |  _  _  _  _  | | |_|   ", ColorTitle);
+            WriteColor("| |_| (_| | |_| | | | | | (_) | |_| | ", ColorMuted);
             Console.WriteLine();
 
-            WriteColor(" |_| \\_| \\___/   |_|  ", ColorTitle);
-            WriteColor("|_| \\_\\___|\\___\\___/|_| |_| |_| .__/  ", ColorMuted);
+            WriteColor("| |  | | | | | | | | | | |  \\  /     ", ColorTitle);
+            WriteColor("|_|\\__,_|\\__,_|_| |_|_|\\___/ \\__,_| ", ColorMuted);
             Console.WriteLine();
 
-            WriteColor("                      ", ColorTitle);
-            WriteColor("                              |_|     ", ColorMuted);
+            WriteColor("|_|  |_| |_| |_|_| |_|_|_|   \\/      ", ColorTitle);
+            WriteColor("                                       ", ColorMuted);
             Console.WriteLine();
 
             Console.WriteLine($"  Launcher Version: {_currentVersion}");
@@ -276,7 +276,7 @@ namespace GithubLauncher
         private async Task<int> AddSteamShortcutCommand(string[] args)
         {
             if (_gameManager?.Games == null)
-                return PrintError("Game library is not available.");
+                return PrintError("App library is not available.");
 
             string gameName = GetExactArg(args, 1).Trim('"', '\'');
             bool waitForSteamExit = args.Any(arg => string.Equals(arg, "--wait-for-steam-exit", StringComparison.OrdinalIgnoreCase));
@@ -319,7 +319,7 @@ namespace GithubLauncher
             if (maxNameLength < 30) maxNameLength = 30;
 
             Console.WriteLine();
-            WriteColor("Available Games:", ColorTitle);
+            WriteColor("Available Apps:", ColorTitle);
             Console.WriteLine();
             Console.WriteLine();
 
@@ -359,7 +359,7 @@ namespace GithubLauncher
             if (string.IsNullOrEmpty(gameName))
             {
                 ShowHelp();
-                return PrintError("Game name required.");
+                return PrintError("App name required.");
             }
 
             var game = FindGame(gameName);
@@ -369,7 +369,7 @@ namespace GithubLauncher
                 WriteColor("Available games: ", ColorMuted);
                 Console.WriteLine(string.Join(", ", _gameManager?.Games.Select(g => g.Name) ?? Array.Empty<string>()));
                 Console.WriteLine();
-                return PrintError($"Game not found: '{gameName}'");
+                return PrintError($"App not found: '{gameName}'");
             }
 
             if (game.Status == GameStatus.NotInstalled)
@@ -394,7 +394,7 @@ namespace GithubLauncher
             var gamesFolder = _gameManager.GamesFolder;
             if (string.IsNullOrEmpty(gamesFolder) || string.IsNullOrEmpty(game.FolderName))
             {
-                return PrintError("Game folder is not configured.");
+                return PrintError("App folder is not configured.");
             }
 
             // Check if need to select executable
@@ -753,7 +753,7 @@ namespace GithubLauncher
             if (string.IsNullOrEmpty(gameName))
             {
                 ShowHelp();
-                return PrintError("Game name required.");
+                return PrintError("App name required.");
             }
 
             var game = FindGame(gameName);
@@ -763,7 +763,7 @@ namespace GithubLauncher
                 WriteColor("Available games: ", ColorMuted);
                 Console.WriteLine(string.Join(", ", _gameManager?.Games.Select(g => g.Name) ?? Array.Empty<string>()));
                 Console.WriteLine();
-                return PrintError($"Game not found: '{gameName}'");
+                return PrintError($"App not found: '{gameName}'");
             }
 
             if (game.Status == GameStatus.Installed)
@@ -1164,7 +1164,7 @@ rm -- ""$0""
             if (string.IsNullOrEmpty(gameName))
             {
                 ShowHelp();
-                return PrintError("Game name required.");
+                return PrintError("App name required.");
             }
 
             var game = FindGame(gameName);
@@ -1174,7 +1174,7 @@ rm -- ""$0""
                 WriteColor("Available games: ", ColorMuted);
                 Console.WriteLine(string.Join(", ", _gameManager?.Games.Select(g => g.Name) ?? Array.Empty<string>()));
                 Console.WriteLine();
-                return PrintError($"Game not found: '{gameName}'");
+                return PrintError($"App not found: '{gameName}'");
             }
 
             if (game.Status == GameStatus.NotInstalled)
@@ -1192,7 +1192,7 @@ rm -- ""$0""
             {
                 if (string.IsNullOrEmpty(game.FolderName))
                 {
-                    return PrintError("Game folder is not configured.");
+                    return PrintError("App folder is not configured.");
                 }
 
                 var gamePath = game.GetInstallPath(_gameManager.GamesFolder);
@@ -1263,3 +1263,4 @@ rm -- ""$0""
         }
     }
 }
+

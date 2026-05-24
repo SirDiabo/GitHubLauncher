@@ -14,62 +14,29 @@ namespace GithubLauncher.Services
         private static readonly GithubLauncherProfile Profile = GithubLauncherProfile.Instance;
         public AppSettings _settings = new();
         private readonly HttpClient _httpClient;
-        private bool _disposed = false;
-        private string _gamesFolder;
+        private bool _disposed;
+        private string _appsFolder;
         private readonly string _cacheFolder;
-        private readonly string _gamesConfigPath;
+        private readonly string _appsConfigPath;
+        private readonly string _legacyGamesConfigPath;
 
         public ObservableCollection<GameInfo> Games { get; set; } = [];
         public HttpClient HttpClient => _httpClient;
-        public string GamesFolder => _gamesFolder;
+        public string AppsFolder => _appsFolder;
+        public string GamesFolder => _appsFolder;
         public string CacheFolder => _cacheFolder;
 
-        private string _CurrentVersionString = string.Empty;
+        private string _currentVersionString = string.Empty;
         public string CurrentVersionString
         {
-            get => _CurrentVersionString;
+            get => _currentVersionString;
             set
             {
-                if (_CurrentVersionString != value)
+                if (_currentVersionString != value)
                 {
-                    _CurrentVersionString = value;
+                    _currentVersionString = value;
                     OnPropertyChanged(nameof(CurrentVersionString));
                 }
-            }
-        }
-
-        public bool IsDefaultGame(string repository)
-        {
-            if (string.IsNullOrEmpty(repository)) return false;
-
-            var defaults = GetDefaultGamesData();
-            var allDefaults = new List<object>();
-            allDefaults.AddRange(defaults.standard);
-            allDefaults.AddRange(defaults.experimental);
-            allDefaults.AddRange(defaults.custom);
-
-            return allDefaults.Any(g => {
-                var dict = ObjectToDict(g);
-                return dict.ContainsKey("repository") &&
-                       dict["repository"]?.ToString()?.Equals(repository, StringComparison.OrdinalIgnoreCase) == true;
-            });
-        }
-
-        public void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!_disposed)
-            {
-                if (disposing)
-                {
-                    _httpClient?.Dispose();
-                }
-                _disposed = true;
             }
         }
 
@@ -89,21 +56,17 @@ namespace GithubLauncher.Services
                 _settings = new AppSettings();
             }
 
-            if (!string.IsNullOrEmpty(_settings?.GamesPath))
-            {
-                _gamesFolder = _settings.GamesPath;
-            }
-            else
-            {
-                _gamesFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, Profile.DefaultInstallFolderName);
-            }
+            _appsFolder = !string.IsNullOrEmpty(_settings?.AppsPath)
+                ? _settings.AppsPath
+                : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, Profile.DefaultInstallFolderName);
 
             _cacheFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Cache");
-            _gamesConfigPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "games.json");
+            _appsConfigPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "apps.json");
+            _legacyGamesConfigPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "games.json");
 
             try
             {
-                Directory.CreateDirectory(_gamesFolder);
+                Directory.CreateDirectory(_appsFolder);
                 Directory.CreateDirectory(_cacheFolder);
                 GitHubApiCache.Initialize(_cacheFolder);
             }
@@ -113,8 +76,24 @@ namespace GithubLauncher.Services
             }
 
             LoadVersionString();
-            _ = ValidateAndFixGamesJsonAsync();
-            Games = new ObservableCollection<GameInfo>();
+            _ = ValidateAndFixAppsJsonAsync();
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (_disposed)
+                return;
+
+            if (disposing)
+                _httpClient.Dispose();
+
+            _disposed = true;
         }
 
         public async Task CheckAllUpdatesAsync()
@@ -122,225 +101,17 @@ namespace GithubLauncher.Services
             await LoadGamesAsync(forceUpdateCheck: true);
         }
 
-        private async Task ValidateAndFixGamesJsonAsync()
+        private async Task ValidateAndFixAppsJsonAsync()
         {
             try
             {
-                if (!File.Exists(_gamesConfigPath))
-                {
-                    System.Diagnostics.Debug.WriteLine("games.json does not exist, skipping integrity check");
-                    return;
-                }
-
-                string json = await File.ReadAllTextAsync(_gamesConfigPath);
-                using var document = JsonDocument.Parse(json);
-                var root = document.RootElement;
-
-                await RenameOldGameFoldersAsync(root);
-
-                bool needsFix = false;
-                var fixedData = new
-                {
-                    standard = ValidateAndFixGameSection(root, "standard", ref needsFix),
-                    experimental = ValidateAndFixGameSection(root, "experimental", ref needsFix),
-                    custom = ValidateAndFixGameSection(root, "custom", ref needsFix)
-                };
-
-                if (needsFix)
-                {
-                    var options = new JsonSerializerOptions { WriteIndented = true };
-                    string fixedJson = JsonSerializer.Serialize(fixedData, options);
-                    await File.WriteAllTextAsync(_gamesConfigPath, fixedJson);
-                    System.Diagnostics.Debug.WriteLine("games.json integrity check: Fixed missing or invalid properties");
-                }
-                else
-                {
-                    System.Diagnostics.Debug.WriteLine("games.json integrity check: No issues found");
-                }
+                var apps = await LoadAppsFromJsonAsync().ConfigureAwait(false);
+                await SaveAppsToJsonAsync(apps).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error during games.json integrity check: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Error during apps.json integrity check: {ex.Message}");
             }
-        }
-
-        private async Task RenameOldGameFoldersAsync(JsonElement root)
-        {
-            if (string.IsNullOrEmpty(_gamesFolder))
-                return;
-
-            var defaultGames = GetDefaultGamesData();
-            var allDefaults = new List<object>();
-            allDefaults.AddRange(defaultGames.standard);
-            allDefaults.AddRange(defaultGames.experimental);
-            allDefaults.AddRange(defaultGames.custom);
-
-            // Check each section
-            foreach (var sectionName in new[] { "standard", "experimental", "custom" })
-            {
-                if (!root.TryGetProperty(sectionName, out var sectionArray))
-                    continue;
-
-                foreach (var gameElement in sectionArray.EnumerateArray())
-                {
-                    if (!gameElement.TryGetProperty("repository", out var repoElement))
-                        continue;
-
-                    string? repository = repoElement.GetString();
-                    if (string.IsNullOrEmpty(repository))
-                        continue;
-
-                    // Find matching default game
-                    var defaultGame = allDefaults.FirstOrDefault(g =>
-                        ObjectToDict(g).ContainsKey("repository") &&
-                        ObjectToDict(g)["repository"]?.ToString()?.Equals(repository, StringComparison.OrdinalIgnoreCase) == true);
-
-                    if (defaultGame == null)
-                        continue;
-
-                    var defaultDict = ObjectToDict(defaultGame);
-                    string? currentFolderName = gameElement.TryGetProperty("folderName", out var folderElement) ? folderElement.GetString() : null;
-
-                    if (string.IsNullOrEmpty(currentFolderName))
-                        continue;
-                }
-            }
-        }
-
-        private List<Dictionary<string, object?>> ValidateAndFixGameSection(JsonElement root, string sectionName, ref bool needsFix)
-        {
-            var fixedGames = new List<Dictionary<string, object?>>();
-
-            if (!root.TryGetProperty(sectionName, out var sectionArray))
-            {
-                return fixedGames;
-            }
-
-            foreach (var gameElement in sectionArray.EnumerateArray())
-            {
-                var gameDict = new Dictionary<string, object?>();
-                bool gameNeedsFix = false;
-
-                // Required properties with defaults
-                var requiredProps = new Dictionary<string, object?>
-                {
-                    { "name", string.Empty },
-                    { "repository", string.Empty },
-                    { "folderName", string.Empty },
-                    { "gameIconUrl", null }
-                };
-
-                // Copy existing properties
-                foreach (var prop in gameElement.EnumerateObject())
-                {
-                    gameDict[prop.Name] = prop.Value.ValueKind switch
-                    {
-                        JsonValueKind.String => prop.Value.GetString(),
-                        JsonValueKind.Null => null,
-                        _ => prop.Value.GetRawText()
-                    };
-                }
-
-                // Migrate old properties to new schema
-                if (gameDict.ContainsKey("customDefaultIconUrl"))
-                {
-                    if (!gameDict.ContainsKey("gameIconUrl") || gameDict["gameIconUrl"] == null)
-                        gameDict["gameIconUrl"] = gameDict["customDefaultIconUrl"];
-                    gameDict.Remove("customDefaultIconUrl");
-                    gameNeedsFix = true;
-                }
-                if (gameDict.ContainsKey("branch")) { gameDict.Remove("branch"); gameNeedsFix = true; }
-                if (gameDict.ContainsKey("imageRes")) { gameDict.Remove("imageRes"); gameNeedsFix = true; }
-                if (gameDict.ContainsKey("repository") && "Francessco121/dino-recomp".Equals(gameDict["repository"]?.ToString(), StringComparison.OrdinalIgnoreCase))
-                {
-                    gameDict["repository"] = "DinosaurPlanetRecomp/dino-recomp";
-                    gameDict["gameIconUrl"] = "https://raw.githubusercontent.com/DinosaurPlanetRecomp/dino-recomp/main/icons/64.png";
-                    gameNeedsFix = true;
-                    System.Diagnostics.Debug.WriteLine("Migrated Dinosaur Planet repository to DinosaurPlanetRecomp/dino-recomp");
-                }
-
-                // Fill missing folder names from defaults without overwriting user edits
-                var defaultGames = GetDefaultGamesData();
-                var allDefaults = new List<object>();
-                allDefaults.AddRange(defaultGames.standard);
-                allDefaults.AddRange(defaultGames.experimental);
-                allDefaults.AddRange(defaultGames.custom);
-
-                if (gameDict.ContainsKey("repository"))
-                {
-                    string? repository = gameDict["repository"]?.ToString();
-                    var matchingDefault = allDefaults.FirstOrDefault(g =>
-                    {
-                        var dict = ObjectToDict(g);
-                        return dict.ContainsKey("repository") &&
-                               dict["repository"]?.ToString()?.Equals(repository, StringComparison.OrdinalIgnoreCase) == true;
-                    });
-
-                    if (matchingDefault != null)
-                    {
-                        var defaultDict = ObjectToDict(matchingDefault);
-                        if (defaultDict.ContainsKey("folderName"))
-                        {
-                            string? correctFolderName = defaultDict["folderName"]?.ToString();
-                            string? currentFolderName = gameDict.ContainsKey("folderName") ? gameDict["folderName"]?.ToString() : null;
-
-                            if (!string.IsNullOrEmpty(correctFolderName) &&
-                                string.IsNullOrWhiteSpace(currentFolderName))
-                            {
-                                gameDict["folderName"] = correctFolderName;
-                                gameNeedsFix = true;
-                                System.Diagnostics.Debug.WriteLine($"Filled missing folderName with '{correctFolderName}' for repository {repository}");
-                            }
-                        }
-
-                        // Sync gameIconUrl from defaults if missing or null
-                        if (defaultDict.ContainsKey("gameIconUrl"))
-                        {
-                            string? defaultIconUrl = defaultDict["gameIconUrl"]?.ToString();
-                            bool currentIsEmpty = !gameDict.ContainsKey("gameIconUrl") || gameDict["gameIconUrl"] == null || string.IsNullOrEmpty(gameDict["gameIconUrl"]?.ToString());
-                            if (!string.IsNullOrEmpty(defaultIconUrl) && currentIsEmpty)
-                            {
-                                gameDict["gameIconUrl"] = defaultIconUrl;
-                                gameNeedsFix = true;
-                                System.Diagnostics.Debug.WriteLine($"Synced gameIconUrl from defaults for repository {repository}");
-                            }
-                        }
-                    }
-                }
-
-                // Check for missing or invalid properties
-                foreach (var requiredProp in requiredProps)
-                {
-                    if (!gameDict.ContainsKey(requiredProp.Key))
-                    {
-                        gameDict[requiredProp.Key] = requiredProp.Value;
-                        gameNeedsFix = true;
-                        System.Diagnostics.Debug.WriteLine($"Fixed missing property '{requiredProp.Key}' in {sectionName} game");
-                    }
-                    else if (gameDict[requiredProp.Key] is string str && string.IsNullOrWhiteSpace(str) &&
-                             requiredProp.Value is string defaultStr && !string.IsNullOrWhiteSpace(defaultStr))
-                    {
-                        // Fix empty required string properties (except those that can be null)
-                        if (requiredProp.Key == "name" || requiredProp.Key == "repository" || requiredProp.Key == "folderName")
-                        {
-                            // Don't fix these as empty - they indicate invalid game entry
-                            continue;
-                        }
-                        gameDict[requiredProp.Key] = requiredProp.Value;
-                        gameNeedsFix = true;
-                        System.Diagnostics.Debug.WriteLine($"Fixed empty property '{requiredProp.Key}' in {sectionName} game");
-                    }
-                }
-
-                if (gameNeedsFix)
-                {
-                    needsFix = true;
-                }
-
-                fixedGames.Add(gameDict);
-            }
-
-            return fixedGames;
         }
 
         private void LoadVersionString()
@@ -361,7 +132,7 @@ namespace GithubLauncher.Services
 
         public GameInfo? GetLatestPlayedInstalledGame()
         {
-            if (Games == null || string.IsNullOrEmpty(_gamesFolder))
+            if (Games == null || string.IsNullOrEmpty(_appsFolder))
                 return null;
 
             DateTime latestTime = DateTime.MinValue;
@@ -371,296 +142,162 @@ namespace GithubLauncher.Services
                 if (game == null || string.IsNullOrEmpty(game.FolderName))
                     continue;
 
-                var gamePath = game.GetInstallPath(_gamesFolder);
+                var gamePath = game.GetInstallPath(_appsFolder);
                 var lastPlayedPath = Path.Combine(gamePath, "LastPlayed.txt");
                 if (File.Exists(lastPlayedPath))
                 {
                     var timeString = File.ReadAllText(lastPlayedPath).Trim();
-                    if (DateTime.TryParseExact(timeString, "yyyy-MM-dd HH:mm:ss", null, System.Globalization.DateTimeStyles.None, out DateTime lastPlayed))
+                    if (DateTime.TryParseExact(timeString, "yyyy-MM-dd HH:mm:ss", null, System.Globalization.DateTimeStyles.None, out DateTime lastPlayed) && lastPlayed > latestTime)
                     {
-                        if (lastPlayed > latestTime)
-                        {
-                            latestTime = lastPlayed;
-                            latestGame = game;
-                        }
+                        latestTime = lastPlayed;
+                        latestGame = game;
                     }
                 }
             }
             return latestGame;
         }
 
-        private async Task<List<GameInfo>> LoadGamesFromJsonAsync()
+        private async Task<List<GameInfo>> LoadAppsFromJsonAsync()
         {
-            var allGames = new List<GameInfo>();
+            if (!File.Exists(_appsConfigPath))
+            {
+                if (File.Exists(_legacyGamesConfigPath))
+                {
+                    var migratedApps = await LoadAppsFromFileAsync(_legacyGamesConfigPath).ConfigureAwait(false);
+                    await SaveAppsToJsonAsync(migratedApps).ConfigureAwait(false);
+                    return migratedApps;
+                }
 
+                await SaveAppsToJsonAsync([]).ConfigureAwait(false);
+                return [];
+            }
+
+            return await LoadAppsFromFileAsync(_appsConfigPath).ConfigureAwait(false);
+        }
+
+        private async Task<List<GameInfo>> LoadAppsFromFileAsync(string path)
+        {
             try
             {
-                if (!File.Exists(_gamesConfigPath))
-                {
-                    // Create default games.json if it doesn't exist
-                    await CreateDefaultGamesJsonAsync();
-                }
-                else
-                {
-                    // Merge defaults with existing to add any new games
-                    await MergeDefaultGamesAsync();
-                }
-
-                string json = await File.ReadAllTextAsync(_gamesConfigPath);
+                string json = await File.ReadAllTextAsync(path).ConfigureAwait(false);
                 using var document = JsonDocument.Parse(json);
-                var root = document.RootElement;
-
-                // Load standard games
-                if (root.TryGetProperty("standard", out var standardArray))
-                {
-                    allGames.AddRange(ParseGameArray(standardArray, isExperimental: false, isCustom: false));
-                }
-
-                // Load experimental games
-                if (root.TryGetProperty("experimental", out var experimentalArray))
-                {
-                    allGames.AddRange(ParseGameArray(experimentalArray, isExperimental: true, isCustom: false));
-                }
-
-                // Load custom games
-                if (root.TryGetProperty("custom", out var customArray))
-                {
-                    allGames.AddRange(ParseGameArray(customArray, isExperimental: false, isCustom: true));
-                }
+                return ParseAppsRoot(document.RootElement);
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error reading games.json: {ex.Message}");
-            }
-
-            return allGames;
-        }
-
-        private async Task MergeDefaultGamesAsync()
-        {
-            try
-            {
-                // Read existing games.json
-                string existingJson = await File.ReadAllTextAsync(_gamesConfigPath);
-                using var existingDoc = JsonDocument.Parse(existingJson);
-                var existingRoot = existingDoc.RootElement;
-
-                // Get default games
-                var defaultGames = GetDefaultGamesData();
-
-                // Parse existing games into lists
-                var existingStandard = new List<Dictionary<string, object?>>();
-                var existingExperimental = new List<Dictionary<string, object?>>();
-                var existingCustom = new List<Dictionary<string, object?>>();
-
-                if (existingRoot.TryGetProperty("standard", out var stdArray))
-                {
-                    existingStandard = ParseToDict(stdArray);
-                }
-                if (existingRoot.TryGetProperty("experimental", out var expArray))
-                {
-                    existingExperimental = ParseToDict(expArray);
-                }
-                if (existingRoot.TryGetProperty("custom", out var custArray))
-                {
-                    existingCustom = ParseToDict(custArray);
-                }
-
-                // Merge defaults with existing (only add new ones)
-                var mergedStandard = MergeGameLists(existingStandard, defaultGames.standard);
-                var mergedExperimental = MergeGameLists(existingExperimental, defaultGames.experimental);
-                var mergedCustom = MergeGameLists(existingCustom, defaultGames.custom);
-
-                // Check if anything was actually added
-                bool hasChanges = mergedStandard.Count != existingStandard.Count ||
-                                  mergedExperimental.Count != existingExperimental.Count ||
-                                  mergedCustom.Count != existingCustom.Count;
-
-                // Only write if there were changes
-                if (hasChanges)
-                {
-                    // Create merged structure
-                    var mergedData = new
-                    {
-                        standard = mergedStandard,
-                        experimental = mergedExperimental,
-                        custom = mergedCustom
-                    };
-
-                    // Save merged data
-                    var options = new JsonSerializerOptions { WriteIndented = true };
-                    string json = JsonSerializer.Serialize(mergedData, options);
-                    await File.WriteAllTextAsync(_gamesConfigPath, json);
-
-                    System.Diagnostics.Debug.WriteLine($"New games merged successfully at {_gamesConfigPath}");
-                }
-                else
-                {
-                    System.Diagnostics.Debug.WriteLine("No new games to merge.");
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error merging default games: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Error reading {Path.GetFileName(path)}: {ex.Message}");
+                return [];
             }
         }
 
-        private List<GameInfo> ParseGameArray(JsonElement gamesArray, bool isExperimental, bool isCustom = false)
+        private List<GameInfo> ParseAppsRoot(JsonElement root)
         {
-            var games = new List<GameInfo>();
+            var apps = new List<GameInfo>();
 
-            foreach (var gameElement in gamesArray.EnumerateArray())
+            if (root.ValueKind == JsonValueKind.Array)
+            {
+                apps.AddRange(ParseAppArray(root));
+                return apps;
+            }
+
+            if (root.TryGetProperty("apps", out var appsArray))
+            {
+                apps.AddRange(ParseAppArray(appsArray));
+            }
+
+            foreach (var legacySection in new[] { "standard", "experimental", "custom" })
+            {
+                if (root.TryGetProperty(legacySection, out var legacyArray))
+                    apps.AddRange(ParseAppArray(legacyArray));
+            }
+
+            return apps
+                .GroupBy(app => app.Repository ?? string.Empty, StringComparer.OrdinalIgnoreCase)
+                .Select(group => group.First())
+                .ToList();
+        }
+
+        private List<GameInfo> ParseAppArray(JsonElement appsArray)
+        {
+            var apps = new List<GameInfo>();
+
+            foreach (var appElement in appsArray.EnumerateArray())
             {
                 try
                 {
-                    var game = new GameInfo
+                    var app = new GameInfo
                     {
-                        Name = (gameElement.TryGetProperty("name", out var nameElement) ? nameElement.GetString() : null) ?? string.Empty,
-                        Repository = (gameElement.TryGetProperty("repository", out var repoElement) ? repoElement.GetString() : null) ?? string.Empty,
-                        FolderName = (gameElement.TryGetProperty("folderName", out var folderElement) ? folderElement.GetString() : null) ?? string.Empty,
-                        InstallPath = (gameElement.TryGetProperty("installPath", out var installPathElement) ? installPathElement.GetString() : null),
-                        GameIconUrl = string.Empty,
-                        PreferredVersion = gameElement.TryGetProperty("preferredVersion", out var preferredVersionElement) ? preferredVersionElement.GetString() : null,
-                        SkippedUpdateVersion = gameElement.TryGetProperty("skippedUpdateVersion", out var skippedUpdateVersionElement) ? skippedUpdateVersionElement.GetString() : null,
-                        IsExperimental = isExperimental,
-                        IsCustom = isCustom,
+                        Name = (appElement.TryGetProperty("name", out var nameElement) ? nameElement.GetString() : null) ?? string.Empty,
+                        Repository = (appElement.TryGetProperty("repository", out var repoElement) ? repoElement.GetString() : null) ?? string.Empty,
+                        FolderName = (appElement.TryGetProperty("folderName", out var folderElement) ? folderElement.GetString() : null) ?? string.Empty,
+                        InstallPath = appElement.TryGetProperty("installPath", out var installPathElement) ? installPathElement.GetString() : null,
+                        GameIconUrl = GetIconUrl(appElement),
+                        PreferredVersion = appElement.TryGetProperty("preferredVersion", out var preferredVersionElement) ? preferredVersionElement.GetString() : null,
+                        SkippedUpdateVersion = appElement.TryGetProperty("skippedUpdateVersion", out var skippedUpdateVersionElement) ? skippedUpdateVersionElement.GetString() : null,
+                        IsExperimental = false,
+                        IsCustom = true,
                         GameManager = this,
                     };
 
-                    if (gameElement.TryGetProperty("gameIconUrl", out var gameIconUrlElement) &&
-                        gameIconUrlElement.ValueKind != JsonValueKind.Null)
-                    {
-                        game.GameIconUrl = gameIconUrlElement.GetString();
-                    }
-                    else if (gameElement.TryGetProperty("customDefaultIconUrl", out var legacyIconElement) &&
-                            legacyIconElement.ValueKind != JsonValueKind.Null)
-                    {
-                        game.GameIconUrl = legacyIconElement.GetString();
-                    }
-
-                    games.Add(game);
+                    apps.Add(app);
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"Error parsing game: {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"Error parsing app: {ex.Message}");
                 }
             }
 
-            return games;
+            return apps;
         }
 
-        private List<Dictionary<string, object?>> ParseToDict(JsonElement array)
+        private static string? GetIconUrl(JsonElement appElement)
         {
-            var result = new List<Dictionary<string, object?>>();
+            if (appElement.TryGetProperty("appIconUrl", out var appIconUrlElement) && appIconUrlElement.ValueKind != JsonValueKind.Null)
+                return appIconUrlElement.GetString();
 
-            foreach (var item in array.EnumerateArray())
+            if (appElement.TryGetProperty("gameIconUrl", out var gameIconUrlElement) && gameIconUrlElement.ValueKind != JsonValueKind.Null)
+                return gameIconUrlElement.GetString();
+
+            if (appElement.TryGetProperty("customDefaultIconUrl", out var legacyIconElement) && legacyIconElement.ValueKind != JsonValueKind.Null)
+                return legacyIconElement.GetString();
+
+            return null;
+        }
+
+        private static object SerializeApp(GameInfo app)
+        {
+            return new
             {
-                var dict = new Dictionary<string, object?>();
-
-                foreach (var prop in item.EnumerateObject())
-                {
-                    dict[prop.Name] = prop.Value.ValueKind switch
-                    {
-                        JsonValueKind.String => prop.Value.GetString(),
-                        JsonValueKind.Null => null,
-                        _ => prop.Value.GetRawText()
-                    };
-                }
-
-                result.Add(dict);
-            }
-
-            return result;
+                name = app.Name,
+                repository = app.Repository,
+                folderName = app.FolderName,
+                installPath = app.InstallPath,
+                appIconUrl = app.GameIconUrl,
+                preferredVersion = app.PreferredVersion,
+                skippedUpdateVersion = app.SkippedUpdateVersion
+            };
         }
 
-        private List<Dictionary<string, object?>> MergeGameLists(
-            List<Dictionary<string, object?>> existing,
-            List<object> defaults)
+        private async Task SaveAppsToJsonAsync(List<GameInfo> apps)
         {
-            var merged = new List<Dictionary<string, object?>>(existing);
-
-            foreach (var defaultGame in defaults)
-            {
-                var defaultDict = ObjectToDict(defaultGame);
-                var gameRepository = defaultDict.ContainsKey("repository") ? defaultDict["repository"]?.ToString() : null;
-
-                if (string.IsNullOrEmpty(gameRepository))
-                    continue;
-
-                // Check if game already exists
-                bool exists = existing.Any(g =>
-                    g.ContainsKey("repository") &&
-                    g["repository"]?.ToString()?.Equals(gameRepository, StringComparison.OrdinalIgnoreCase) == true);
-
-                if (!exists)
-                {
-                    merged.Add(defaultDict);
-                    System.Diagnostics.Debug.WriteLine($"Added new game: {gameRepository}");
-                }
-            }
-
-            return merged;
-        }
-
-        private Dictionary<string, object?> ObjectToDict(object obj)
-        {
-            var dict = new Dictionary<string, object?>();
-            var props = obj.GetType().GetProperties();
-
-            foreach (var prop in props)
-            {
-                dict[char.ToLower(prop.Name[0]) + prop.Name.Substring(1)] = prop.GetValue(obj);
-            }
-
-            return dict;
-        }
-
-        private (List<object> standard, List<object> experimental, List<object> custom) GetDefaultGamesData()
-        {
-            return Profile.GetDefaultGamesData();
-        }
-
-        private string BuildDefaultGamesJson()
-        {
-            var defaultData = GetDefaultGamesData();
-
             var data = new
             {
-                standard = defaultData.standard,
-                experimental = defaultData.experimental,
-                custom = defaultData.custom
+                apps = apps.Select(SerializeApp).ToList()
             };
 
             var options = new JsonSerializerOptions { WriteIndented = true };
-            return JsonSerializer.Serialize(data, options);
+            await File.WriteAllTextAsync(_appsConfigPath, JsonSerializer.Serialize(data, options)).ConfigureAwait(false);
         }
 
-        private void CreateDefaultGamesJson()
+        private void SaveAppsToJson(List<GameInfo> apps)
         {
-            try
+            var data = new
             {
-                string json = BuildDefaultGamesJson();
-                File.WriteAllText(_gamesConfigPath, json);
-                System.Diagnostics.Debug.WriteLine($"Default games.json created at {_gamesConfigPath}");
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error creating default games.json: {ex.Message}");
-            }
-        }
+                apps = apps.Select(SerializeApp).ToList()
+            };
 
-        private async Task CreateDefaultGamesJsonAsync()
-        {
-            try
-            {
-                string json = BuildDefaultGamesJson();
-                await File.WriteAllTextAsync(_gamesConfigPath, json).ConfigureAwait(false);
-                System.Diagnostics.Debug.WriteLine($"Default games.json created at {_gamesConfigPath}");
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error creating default games.json: {ex.Message}");
-            }
+            var options = new JsonSerializerOptions { WriteIndented = true };
+            File.WriteAllText(_appsConfigPath, JsonSerializer.Serialize(data, options));
         }
 
         private async Task LoadCustomAndCachedIconsAsync()
@@ -668,16 +305,11 @@ namespace GithubLauncher.Services
             if (Games == null || string.IsNullOrEmpty(_cacheFolder))
                 return;
 
-            // Load custom covers
             foreach (var game in Games)
             {
-                if (game != null)
-                {
-                    game.LoadCustomIcon(_cacheFolder);
-                }
+                game?.LoadCustomIcon(_cacheFolder);
             }
 
-            // Download/load cached default icons asynchronously
             var tasks = Games
                 .Where(g => g != null)
                 .Select(g => g.LoadAndCacheDefaultIconAsync(_cacheFolder));
@@ -693,9 +325,6 @@ namespace GithubLauncher.Services
                 if (Directory.Exists(iconsDir))
                 {
                     Directory.Delete(iconsDir, true);
-                    System.Diagnostics.Debug.WriteLine("Icon cache cleared successfully");
-
-                    // Reload icons for all games
                     await LoadCustomAndCachedIconsAsync();
                 }
             }
@@ -715,63 +344,38 @@ namespace GithubLauncher.Services
             return Games.FirstOrDefault(g => string.Equals(g.FolderName, folderName, StringComparison.OrdinalIgnoreCase));
         }
 
-        public void OnPropertyChanged(string propertyName)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
-
         public async Task LoadGamesAsync(bool forceUpdateCheck = false)
         {
             var settings = AppSettings.Load();
 
-            if (Games == null)
-                Games = new ObservableCollection<GameInfo>();
-
-            var allGames = await LoadGamesFromJsonAsync();
-
-            if (allGames == null)
-                allGames = new List<GameInfo>();
-
-            var filteredGames = allGames
-            .Where(game => game != null && (!game.IsExperimental || settings.ShowExperimentalGames))
-            .Where(game => game != null && (!game.IsCustom || settings.ShowCustomGames))
-            .Where(game => game != null && !IsGameHidden(settings, game))
-            .ToList();
+            Games ??= [];
+            var allApps = await LoadAppsFromJsonAsync();
+            var filteredApps = allApps
+                .Where(app => app != null && !IsGameHidden(settings, app))
+                .ToList();
 
             Games.Clear();
 
-            foreach (var game in filteredGames)
+            foreach (var app in filteredApps)
             {
-                if (game != null)
-                    Games.Add(game);
+                if (app != null)
+                    Games.Add(app);
             }
 
             await LoadCustomAndCachedIconsAsync();
 
-            if (string.IsNullOrEmpty(_gamesFolder))
+            if (string.IsNullOrEmpty(_appsFolder))
                 return;
 
-            if (!forceUpdateCheck)
-            {
-                int cachedCount = Games.Count(g => !GitHubApiCache.NeedsUpdateCheck(g.Repository ?? string.Empty,
-                    Directory.Exists(g.GetInstallPath(_gamesFolder))));
-                int apiCallCount = Games.Count - cachedCount;
-                System.Diagnostics.Debug.WriteLine($"LoadGamesAsync: {cachedCount} games using cache, {apiCallCount} will check for updates");
-            }
-            else
-            {
-                System.Diagnostics.Debug.WriteLine($"LoadGamesAsync: Force update check for all {Games.Count} games");
-            }
-
-            await Task.WhenAll(Games.Where(game => game != null).Select(async game =>
+            await Task.WhenAll(Games.Where(app => app != null).Select(async app =>
             {
                 try
                 {
-                    await game.CheckStatusAsync(_httpClient, _gamesFolder, forceUpdateCheck);
+                    await app.CheckStatusAsync(_httpClient, _appsFolder, forceUpdateCheck);
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"Error checking status for {game.Name}: {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"Error checking status for {app.Name}: {ex.Message}");
                 }
             }));
         }
@@ -780,43 +384,13 @@ namespace GithubLauncher.Services
         {
             try
             {
-                var allGames = await LoadGamesFromJsonAsync().ConfigureAwait(false);
-
-                var groupedGames = new
-                {
-                    standard = allGames
-                        .Where(g => !g.IsExperimental)
-                        .Select(g => new
-                        {
-                            g.Name,
-                            g.Repository,
-                            g.FolderName,
-                            g.InstallPath,
-                            g.GameIconUrl
-                        }).ToList(),
-                    experimental = allGames
-                        .Where(g => g.IsExperimental)
-                        .Select(g => new
-                        {
-                            g.Name,
-                            g.Repository,
-                            g.FolderName,
-                            g.InstallPath,
-                            g.GameIconUrl
-                        }).ToList(),
-                    custom = Array.Empty<object>()
-                };
-
-                var options = new JsonSerializerOptions { WriteIndented = true };
-                string json = JsonSerializer.Serialize(groupedGames, options);
-
-                await File.WriteAllTextAsync(_gamesConfigPath, json).ConfigureAwait(false);
-
-                System.Diagnostics.Debug.WriteLine($"Games exported successfully to {_gamesConfigPath}");
+                var apps = await LoadAppsFromJsonAsync().ConfigureAwait(false);
+                await SaveAppsToJsonAsync(apps).ConfigureAwait(false);
+                System.Diagnostics.Debug.WriteLine($"Apps exported successfully to {_appsConfigPath}");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error exporting games: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Error exporting apps: {ex.Message}");
             }
         }
 
@@ -828,19 +402,9 @@ namespace GithubLauncher.Services
 
                 if (!string.IsNullOrWhiteSpace(newPath))
                 {
-                    // Validate the path exists or can be created
                     if (!Directory.Exists(newPath))
-                    {
-                        try
-                        {
-                            Directory.CreateDirectory(newPath);
-                        }
-                        catch (Exception ex)
-                        {
-                            System.Diagnostics.Debug.WriteLine($"Failed to create custom games directory: {ex.Message}");
-                            throw new InvalidOperationException($"Cannot create directory at {newPath}", ex);
-                        }
-                    }
+                        Directory.CreateDirectory(newPath);
+
                     targetPath = newPath;
                 }
                 else
@@ -849,53 +413,22 @@ namespace GithubLauncher.Services
                     Directory.CreateDirectory(targetPath);
                 }
 
-                _gamesFolder = targetPath;
+                _appsFolder = targetPath;
                 Games.Clear();
 
                 await LoadGamesAsync();
 
                 OnPropertyChanged(nameof(Games));
+                OnPropertyChanged(nameof(AppsFolder));
                 OnPropertyChanged(nameof(GamesFolder));
-
-                System.Diagnostics.Debug.WriteLine($"Games folder updated to: {_gamesFolder}");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error updating games folder: {ex.Message}");
-
-                // Fallback to default path on error
-                _gamesFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, Profile.DefaultInstallFolderName);
-                Directory.CreateDirectory(_gamesFolder);
-
+                System.Diagnostics.Debug.WriteLine($"Error updating apps folder: {ex.Message}");
+                _appsFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, Profile.DefaultInstallFolderName);
+                Directory.CreateDirectory(_appsFolder);
                 throw;
             }
-        }
-
-        private DateTime GetLastPlayedTime(string folderName)
-        {
-            if (string.IsNullOrEmpty(_gamesFolder) || string.IsNullOrEmpty(folderName))
-                return DateTime.MinValue;
-
-            try
-            {
-                var gamePath = Path.Combine(_gamesFolder, folderName);
-                var lastPlayedPath = Path.Combine(gamePath, "LastPlayed.txt");
-
-                if (File.Exists(lastPlayedPath))
-                {
-                    var timeString = File.ReadAllText(lastPlayedPath).Trim();
-                    if (DateTime.TryParseExact(timeString, "yyyy-MM-dd HH:mm:ss", null, System.Globalization.DateTimeStyles.None, out DateTime lastPlayed))
-                    {
-                        return lastPlayed;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Failed to read LastPlayed.txt for {folderName}: {ex.Message}");
-            }
-
-            return DateTime.MinValue;
         }
 
         private static string GetHiddenGameKey(GameInfo game)
@@ -911,12 +444,12 @@ namespace GithubLauncher.Services
 
         private static bool IsGameHidden(AppSettings settings, GameInfo game)
         {
-            if (settings?.HiddenGames == null)
+            if (settings?.HiddenApps == null)
                 return false;
 
             var hiddenKey = GetHiddenGameKey(game);
-            return settings.HiddenGames.Contains(hiddenKey) ||
-                   (!string.IsNullOrWhiteSpace(game.Name) && settings.HiddenGames.Contains(game.Name)) ||
+            return settings.HiddenApps.Contains(hiddenKey) ||
+                   (!string.IsNullOrWhiteSpace(game.Name) && settings.HiddenApps.Contains(game.Name)) ||
                    IsGameManuallyHidden(settings, game);
         }
 
@@ -946,14 +479,12 @@ namespace GithubLauncher.Services
 
         private static void AddHiddenGame(AppSettings settings, GameInfo game)
         {
-            if (settings?.HiddenGames == null)
+            if (settings?.HiddenApps == null)
                 return;
 
             var hiddenKey = GetHiddenGameKey(game);
-            if (!settings.HiddenGames.Contains(hiddenKey))
-            {
-                settings.HiddenGames.Add(hiddenKey);
-            }
+            if (!settings.HiddenApps.Contains(hiddenKey))
+                settings.HiddenApps.Add(hiddenKey);
         }
 
         public void HideGame(GameInfo game)
@@ -973,7 +504,7 @@ namespace GithubLauncher.Services
         public void UnhideAllGames()
         {
             var settings = AppSettings.Load();
-            settings.HiddenGames.Clear();
+            settings.HiddenApps.Clear();
             AppSettings.Save(settings);
             FilterGames(settings);
         }
@@ -981,180 +512,76 @@ namespace GithubLauncher.Services
         public async Task HideAllNonInstalledGames()
         {
             var settings = AppSettings.Load();
-            settings.HiddenGames.Clear();
+            settings.HiddenApps.Clear();
             AppSettings.Save(settings);
 
             await LoadGamesAsync();
-
-            if (Games == null)
-                return;
 
             foreach (var game in Games)
             {
                 if (game != null && game.Status == GameStatus.NotInstalled && !IsGameHidden(settings, game))
-                {
                     AddHiddenGame(settings, game);
-                }
             }
             AppSettings.Save(settings);
             await LoadGamesAsync();
-        }
-
-        public async Task HideAllNonStableGames()
-        {
-            var settings = AppSettings.Load();
-            settings.HiddenGames.Clear();
-            AppSettings.Save(settings);
-
-            await LoadGamesAsync();
-
-            foreach (var game in Games)
-            {
-                if (game != null && game.IsExperimental == true && !IsGameHidden(settings, game))
-                {
-                    AddHiddenGame(settings, game);
-                }
-            }
-            AppSettings.Save(settings);
-            await LoadGamesAsync();
-        }
-
-        public List<GameInfo> GetDefaultGames()
-        {
-            var games = LoadGamesFromJson();
-            return games.Where(g => !g.IsCustom).ToList();
         }
 
         private List<GameInfo> LoadGamesFromJson()
         {
-            var allGames = new List<GameInfo>();
-
-            try
-            {
-                if (!File.Exists(_gamesConfigPath))
-                {
-                    CreateDefaultGamesJson();
-                }
-
-                string json = File.ReadAllText(_gamesConfigPath);
-                using var document = JsonDocument.Parse(json);
-                var root = document.RootElement;
-
-                // Load standard games
-                if (root.TryGetProperty("standard", out var standardArray))
-                {
-                    allGames.AddRange(ParseGameArray(standardArray, isExperimental: false, isCustom: false));
-                }
-
-                // Load experimental games
-                if (root.TryGetProperty("experimental", out var experimentalArray))
-                {
-                    allGames.AddRange(ParseGameArray(experimentalArray, isExperimental: true, isCustom: false));
-                }
-
-                // Load custom games
-                if (root.TryGetProperty("custom", out var customArray))
-                {
-                    allGames.AddRange(ParseGameArray(customArray, isExperimental: false, isCustom: true));
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error reading games.json: {ex.Message}");
-            }
-
-            return allGames;
-        }
-
-        public async Task OnlyShowExperimentalGames()
-        {
-            var settings = AppSettings.Load();
-            settings.HiddenGames.Clear();
-            AppSettings.Save(settings);
-
-            await LoadGamesAsync();
-
-            if (Games == null)
-                return;
-
-            foreach (var game in Games)
-            {
-                if (game != null && game.IsExperimental == false && !IsGameHidden(settings, game))
-                {
-                    AddHiddenGame(settings, game);
-                }
-            }
-            AppSettings.Save(settings);
-            await LoadGamesAsync();
-        }
-
-        public async Task OnlyShowCustomGames()
-        {
-            var settings = AppSettings.Load();
-            settings.HiddenGames.Clear();
-            AppSettings.Save(settings);
-
-            await LoadGamesAsync();
-
-            if (Games == null)
-                return;
-
-            foreach (var game in Games)
-            {
-                if (game != null && !game.IsCustom && !IsGameHidden(settings, game))
-                {
-                    AddHiddenGame(settings, game);
-                }
-            }
-            AppSettings.Save(settings);
-            await LoadGamesAsync();
+            return LoadAppsFromJsonAsync().GetAwaiter().GetResult();
         }
 
         private void FilterGames(AppSettings settings)
         {
-            if (Games == null || settings?.HiddenGames == null)
+            if (Games == null || settings?.HiddenApps == null)
                 return;
 
             for (int i = Games.Count - 1; i >= 0; i--)
             {
                 if (Games[i] != null && IsGameHidden(settings, Games[i]))
-                {
                     Games.RemoveAt(i);
-                }
             }
         }
 
         private static bool IsGameManuallyHidden(AppSettings settings, GameInfo game)
         {
-            if (settings?.ManuallyHiddenGames == null)
+            if (settings?.ManuallyHiddenApps == null)
                 return false;
+
             var key = GetHiddenGameKey(game);
-            return settings.ManuallyHiddenGames.Contains(key) ||
-                   (!string.IsNullOrWhiteSpace(game.Name) && settings.ManuallyHiddenGames.Contains(game.Name));
+            return settings.ManuallyHiddenApps.Contains(key) ||
+                   (!string.IsNullOrWhiteSpace(game.Name) && settings.ManuallyHiddenApps.Contains(game.Name));
         }
 
         private static void AddManuallyHiddenGame(AppSettings settings, GameInfo game)
         {
-            if (settings?.ManuallyHiddenGames == null)
+            if (settings?.ManuallyHiddenApps == null)
                 return;
+
             var key = GetHiddenGameKey(game);
-            if (!settings.ManuallyHiddenGames.Contains(key))
-                settings.ManuallyHiddenGames.Add(key);
+            if (!settings.ManuallyHiddenApps.Contains(key))
+                settings.ManuallyHiddenApps.Add(key);
         }
 
         private static void RemoveManuallyHiddenGame(AppSettings settings, GameInfo game)
         {
-            if (settings?.ManuallyHiddenGames == null)
+            if (settings?.ManuallyHiddenApps == null)
                 return;
+
             var key = GetHiddenGameKey(game);
-            settings.ManuallyHiddenGames.Remove(key);
+            settings.ManuallyHiddenApps.Remove(key);
             if (!string.IsNullOrWhiteSpace(game.Name))
-                settings.ManuallyHiddenGames.Remove(game.Name);
+                settings.ManuallyHiddenApps.Remove(game.Name);
         }
 
         public void RefreshGamesWithFilter(AppSettings settings)
         {
             _ = LoadGamesAsync();
+        }
+
+        public void OnPropertyChanged(string propertyName)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
